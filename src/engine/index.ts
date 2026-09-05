@@ -2,7 +2,14 @@
 // See docs/adr/0001-pure-engine-ui-as-thin-consumer.md and CONTEXT.md.
 export { cardValue, parseCard, parseCards, sameCard } from './cards';
 export type { Card, Rank, Suit } from './cards';
-export { apply, gameResult, newGame, viewFor } from './game';
+export {
+  apply,
+  gameResult,
+  newGame,
+  replay,
+  seatsToAct,
+  viewFor,
+} from './game';
 export type {
   Action,
   ApplyResult,
@@ -16,6 +23,8 @@ export type {
   View,
 } from './game';
 export type { PeggingEvent, PlayedCard } from './pegging';
+export { createRng, nextInt } from './random';
+export type { Draw, Rng } from './random';
 export { otherSeat } from './seat';
 export type { PerSeat, Seat } from './seat';
 export type { Combination, CombinationKind, Tally } from './tally';

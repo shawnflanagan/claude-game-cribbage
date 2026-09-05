@@ -86,6 +86,24 @@ export type NewGameOptions = {
   readonly scores?: PerSeat<number>;
 };
 
+/**
+ * Rebuilds a Game from its seed and Action history (ADR 0002). Fails with
+ * the first Violation if the history does not fit the seed.
+ */
+export function replay(
+  seed: number,
+  actions: readonly Action[],
+  options: NewGameOptions = {},
+): ApplyResult {
+  let step = newGame(seed, options);
+  for (const action of actions) {
+    const result = apply(step.state, action);
+    if (!result.ok) return result;
+    step = { state: result.state, events: [...step.events, ...result.events] };
+  }
+  return { ok: true, ...step };
+}
+
 /** Cuts for deal, deals the first Round, and waits for Discards. */
 export function newGame(seed: number, options: NewGameOptions = {}): Step {
   let rng = createRng(seed);
@@ -359,6 +377,18 @@ export type View = {
   readonly discarded: PerSeat<boolean>;
   readonly pegging: PeggingView | null;
 };
+
+/** The Seats a decision is waiting on: both may Discard, one Seat pegs. */
+export function seatsToAct(view: View): readonly Seat[] {
+  switch (view.phase) {
+    case 'discard':
+      return ([0, 1] as const).filter((seat) => !view.discarded[seat]);
+    case 'pegging':
+      return view.pegging === null ? [] : [view.pegging.turn];
+    case 'game-over':
+      return [];
+  }
+}
 
 export function viewFor(state: GameState, seat: Seat): View {
   const other = otherSeat(seat);
