@@ -1,0 +1,501 @@
+:root {
+  --felt: #2f6b3a;
+  --felt-dark: #23512c;
+  --felt-inset: rgba(0, 0, 0, 0.18);
+  --paper: #fffdf7;
+  --ink: #1b1b1b;
+  --red: #b3261e;
+  --accent: #f2c14e;
+  --muted: rgba(255, 255, 255, 0.78);
+  --wood: #5b3a1e;
+  --wood-dark: #2b1a0c;
+  --wood-darker: #1a0f06;
+  --computer-peg: #8fb4ff;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --radius: 0.75rem;
+  --card-w: 3.4rem;
+  --card-h: 4.7rem;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--paper);
+  background: var(--felt-dark);
+  line-height: 1.35;
+}
+
+/* Six cards plus gaps must fit a 390px phone in one row; 48px still taps well. */
+@media (max-width: 26rem) {
+  :root {
+    --card-w: 3rem;
+    --card-h: 4.2rem;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--felt-dark);
+}
+
+/* Layout: one column on a phone, table and Log side by side when wide. */
+.app {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-areas:
+    'top'
+    'board'
+    'table'
+    'log';
+}
+
+@media (min-width: 60rem) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-areas:
+      'top top'
+      'board board'
+      'table log';
+    align-items: start;
+  }
+}
+
+.top {
+  grid-area: top;
+}
+.board {
+  grid-area: board;
+}
+.table {
+  grid-area: table;
+}
+.log {
+  grid-area: log;
+}
+
+/* Header */
+.top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'title actions'
+    'scores scores';
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+@media (min-width: 36rem) {
+  .top {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'title scores actions';
+  }
+}
+
+.top h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+}
+
+.scores {
+  grid-area: scores;
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 36rem) {
+  .scores {
+    justify-content: center;
+  }
+}
+
+.scores strong {
+  color: var(--accent);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.round {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.top-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* The Log is below the fold on a phone; wider layouts show it alongside. */
+.quiet-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+@media (min-width: 60rem) {
+  .quiet-link {
+    display: none;
+  }
+}
+
+.quiet {
+  font: inherit;
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+/* Table */
+.table {
+  background: var(--felt);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.seat header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--paper);
+}
+
+.badge {
+  background: var(--accent);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Cards */
+.card {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: var(--card-w);
+  height: var(--card-h);
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.45rem;
+  border: 1px solid #d6cfbd;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  text-align: left;
+  cursor: default;
+  box-shadow: var(--shadow);
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.card-rank {
+  font-size: 1.15rem;
+}
+
+.card-suit {
+  font-size: 1.6rem;
+  align-self: flex-end;
+}
+
+.card-red {
+  color: var(--red);
+}
+
+button.card {
+  cursor: pointer;
+}
+
+button.card:hover:not(:disabled) {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+}
+
+button.card:focus-visible,
+.action:focus-visible,
+.quiet:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.card:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.card-selected,
+button.card.card-selected:hover:not(:disabled) {
+  transform: translateY(-0.6rem);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+}
+
+/* Keep the focus ring visible outside the selection ring. */
+button.card.card-selected:focus-visible {
+  outline-offset: 5px;
+}
+
+.card-back {
+  background: repeating-linear-gradient(45deg, #5a6fb0 0 4px, #46579a 4px 8px);
+  border-color: #2e3a6b;
+}
+
+/* Middle of the table */
+.middle {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  text-align: center;
+  min-height: 9rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: var(--radius);
+  background: var(--felt-inset);
+}
+
+.centre {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.cut {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.play-area {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+}
+
+.count {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.count strong {
+  display: inline-block;
+  min-width: 2.5rem;
+  margin-left: 0.25rem;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--accent);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.5rem;
+  font-size: 1.05rem;
+}
+
+.scoring {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.action {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 44px;
+  box-shadow: var(--shadow);
+}
+
+.action:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.hand .action {
+  margin-top: 0.6rem;
+}
+
+/* Log */
+.log {
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 60rem) {
+  .log {
+    max-height: calc(100vh - 2rem);
+    position: sticky;
+    top: 0.5rem;
+  }
+}
+
+.log h2 {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.log ol {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.log li + li {
+  margin-top: 0.15rem;
+}
+
+/* Result */
+.game-over {
+  width: min(100%, 24rem);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.game-over h2 {
+  margin: 0 0 0.5rem;
+}
+
+.skunk {
+  font-weight: 700;
+  color: var(--red);
+}
+
+/* Board */
+.board {
+  background: var(--wood);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hole {
+  fill: var(--wood-dark);
+}
+
+.hole-game {
+  fill: var(--wood-darker);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.skunk-line {
+  stroke: var(--paper);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.peg circle {
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 0.8;
+}
+
+.track-0 .peg circle {
+  fill: var(--accent);
+}
+
+.track-1 .peg circle {
+  fill: var(--computer-peg);
+}
+
+.peg-back circle {
+  opacity: 0.8;
+}
+
+.peg {
+  transition: transform 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  button.card:hover:not(:disabled),
+  .card-selected,
+  button.card.card-selected:hover:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+
+  .peg {
+    transition: none;
+  }
+}
