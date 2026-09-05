@@ -76,6 +76,7 @@ export function useGame(
     if (computerToAct(session)) dispatch({ type: 'computer', opponent });
   }, [session, opponent]);
 
+  // Re-armed on every cursor step, including one inside a Show count.
   const delay = pause.kind === 'after' ? pause.ms * pace : null;
   useEffect(() => {
     if (delay === null) return;
@@ -85,7 +86,7 @@ export function useGame(
     return () => {
       clearTimeout(timer);
     };
-  }, [session.revealed, session.events.length, delay]);
+  }, [session.revealed, session.counted, session.events.length, delay]);
 
   const view = viewFor(session.engine, session.human);
   const humanToAct =

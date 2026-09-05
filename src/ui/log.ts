@@ -3,11 +3,13 @@ import type {
   Combination,
   GameEvent,
   GameResult,
+  PerSeat,
   Seat,
   Tally,
 } from '../engine';
 import { otherSeat } from '../engine';
 import { formatCard } from './cards';
+import { combinationName, takesArticle } from './show';
 
 export function seatName(seat: Seat, human: Seat): string {
   return seat === human ? 'You' : 'Computer';
@@ -16,6 +18,31 @@ export function seatName(seat: Seat, human: Seat): string {
 /** "You count" but "Computer counts". */
 function verb(seat: Seat, human: Seat, base: string): string {
   return seat === human ? base : `${base}s`;
+}
+
+const RANK_WORDS: Readonly<Record<number, string>> = {
+  1: 'an Ace',
+  8: 'an 8',
+  11: 'a Jack',
+  12: 'a Queen',
+  13: 'a King',
+};
+
+function aCard(card: Card): string {
+  return RANK_WORDS[card.rank] ?? `a ${String(card.rank)}`;
+}
+
+/** "You cut a 4, Computer cut a Jack. You deal." */
+export function describeCut(
+  cuts: PerSeat<Card>,
+  dealer: Seat | null,
+  human: Seat,
+): string {
+  const who = (seat: Seat) => seatName(seat, human);
+  const [a, b] = cuts;
+  const cut = `${who(0)} cut ${aCard(a)}, ${who(1)} cut ${aCard(b)}.`;
+  if (dealer === null) return `${cut} A tie, cut again.`;
+  return `${cut} ${who(dealer)} ${verb(dealer, human, 'deal')}.`;
 }
 
 export function describeSkunk(result: GameResult): string | null {
@@ -92,27 +119,6 @@ export function combinations(tally: Tally): string {
 }
 
 export function describeCombination(c: Combination): string {
-  const points = `for ${String(c.points)}`;
-  switch (c.kind) {
-    case 'fifteen':
-      return `Fifteen ${points}`;
-    case 'pair':
-      return `a Pair ${points}`;
-    case 'pair-royal':
-      return `a Pair Royal ${points}`;
-    case 'double-pair-royal':
-      return `a Double Pair Royal ${points}`;
-    case 'run':
-      return `a Run of ${String(c.cards.length)} ${points}`;
-    case 'flush':
-      return `a Flush ${points}`;
-    case 'nobs':
-      return `Nobs ${points}`;
-    case 'thirty-one':
-      return `Thirty-One ${points}`;
-    case 'last-card':
-      return `Last Card ${points}`;
-    case 'heels':
-      return `Heels ${points}`;
-  }
+  const name = takesArticle(c) ? `a ${combinationName(c)}` : combinationName(c);
+  return `${name} for ${String(c.points)}`;
 }

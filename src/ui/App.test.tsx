@@ -62,6 +62,37 @@ describe('App', () => {
     ).toHaveLength(4);
   });
 
+  it('pegs a Round out and counts the Show out to a Continue', async () => {
+    render(<App seed={1} pace={0} storage={null} />);
+    const send = await screen.findByRole('button', { name: 'Send to crib' });
+    await waitFor(() => {
+      expect(
+        screen.getByText('Choose your Discard for the Crib.'),
+      ).toBeDefined();
+    });
+    const you = screen.getByRole('region', { name: 'You' });
+    const [a, b] = cardButtons(you);
+    if (!a || !b) throw new Error('short hand');
+    fireEvent.click(a);
+    fireEvent.click(b);
+    fireEvent.click(send);
+    // Play whatever is legal until the Show has been counted out.
+    await waitFor(
+      () => {
+        const legal = within(you)
+          .queryAllByRole('button', { name: / of / })
+          .find((c) => !(c as HTMLButtonElement).disabled);
+        if (legal !== undefined) fireEvent.click(legal);
+        expect(screen.getByRole('button', { name: 'Continue' })).toBeDefined();
+      },
+      { timeout: 4000, interval: 20 },
+    );
+    expect(screen.getByRole('status').textContent).toMatch(
+      /counts? the Hand for/,
+    );
+    expect(document.querySelector('.phrase')?.textContent).not.toBe('');
+  });
+
   it('asks before abandoning a Game in progress, and starts over when told to', async () => {
     let asked = 0;
     let answer = false;

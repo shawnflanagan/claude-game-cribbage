@@ -1,5 +1,5 @@
 import { createRng, isCard, replay, type Action, type Seat } from '../engine';
-import type { Session } from './session';
+import { revealAll, type Session } from './session';
 
 export const STORAGE_KEY = 'cribbage.game';
 
@@ -35,15 +35,16 @@ export function restore(saved: unknown): Session | null {
   if (!isSavedGame(saved)) return null;
   const replayed = replay(saved.seed, saved.actions);
   if (!replayed.ok || replayed.state.phase === 'game-over') return null;
-  return {
+  return revealAll({
     seed: saved.seed,
     human: saved.human,
     engine: replayed.state,
     events: replayed.events,
     actions: saved.actions,
-    revealed: replayed.events.length,
+    revealed: 0,
+    counted: 0,
     opponentRng: createRng(saved.opponentRng),
-  };
+  });
 }
 
 export function saveGame(storage: Storage, session: Session): void {

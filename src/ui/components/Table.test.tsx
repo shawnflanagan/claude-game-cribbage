@@ -32,6 +32,7 @@ const showModel: TableModel = {
       ],
     },
   },
+  counted: 2,
   shows: [
     {
       type: 'show-counted',
@@ -69,9 +70,7 @@ describe('Table during the Show', () => {
       />,
     );
     expect(screen.getByText('You count the Hand for 4.')).toBeDefined();
-    expect(
-      screen.getByText('You: Fifteen for 2 and a Pair for 2'),
-    ).toBeDefined();
+    expect(screen.getByText('Fifteen two, and a pair is four')).toBeDefined();
     expect(
       screen.getByRole('region', { name: 'You' }).querySelectorAll('.card'),
     ).toHaveLength(4);
@@ -177,5 +176,153 @@ describe('Table during Pegging', () => {
     const yours = screen.getByRole('group', { name: 'Your played cards' });
     expect(yours.querySelector('.played-pile .card-back')).toBeNull();
     expect(yours.querySelector('.played-pile')?.textContent).toBe('');
+  });
+});
+
+describe('Table counting out the Show', () => {
+  const tally = {
+    total: 4,
+    combinations: [
+      { kind: 'pair' as const, points: 2, cards: parseCards('5H 5S') },
+      { kind: 'fifteen' as const, points: 2, cards: parseCards('5D JC') },
+    ],
+  };
+  const show = {
+    type: 'show-counted' as const,
+    seat: 0 as const,
+    source: 'hand' as const,
+    cards: parseCards('5H 5S 6D JC'),
+    tally,
+  };
+  const model: TableModel = {
+    ...showModel,
+    lastTally: { seat: 0, source: 'hand', tally },
+    shows: [show],
+  };
+  const props = {
+    model,
+    human: 0 as const,
+    legal: [],
+    humanToAct: false,
+    pause: { kind: 'after', ms: 700 } as const,
+    onAct: () => undefined,
+    onContinue: () => undefined,
+    onNewGame: () => undefined,
+  };
+  it('shows the Hand with nothing lit and no total before counting starts', () => {
+    render(<Table {...props} model={{ ...model, counted: 0 }} />);
+    expect(screen.getByRole('status').textContent).toBe('You count the Hand.');
+    expect(document.querySelectorAll('.card-lit')).toHaveLength(0);
+    expect(document.querySelector('.phrase')?.textContent).toBe('');
+  });
+
+  it('lights the cards of the Combination being counted, fifteens first', () => {
+    const { rerender } = render(
+      <Table {...props} model={{ ...model, counted: 1 }} />,
+    );
+    const lit = () =>
+      [...document.querySelectorAll('.card-lit')].map((c) =>
+        c.getAttribute('aria-label'),
+      );
+    expect(lit()).toEqual(['5 of diamonds', 'jack of clubs']);
+    expect(document.querySelector('.phrase')?.textContent).toBe('Fifteen two');
+    rerender(<Table {...props} model={{ ...model, counted: 2 }} />);
+    expect(lit()).toEqual(['5 of hearts', '5 of spades']);
+    expect(screen.getByRole('status').textContent).toBe(
+      'You count the Hand for 4.',
+    );
+  });
+
+  it('lights the Starter when it is part of the Combination', () => {
+    render(<Table {...props} model={{ ...model, counted: 1 }} />);
+    expect(
+      screen.getByLabelText('5 of diamonds').classList.contains('card-lit'),
+    ).toBe(true);
+  });
+
+  it('says No score under a Hand worth nothing', () => {
+    const empty = { total: 0, combinations: [] };
+    render(
+      <Table
+        {...props}
+        model={{
+          ...model,
+          counted: 0,
+          lastTally: { seat: 0, source: 'hand', tally: empty },
+          shows: [{ ...show, tally: empty }],
+        }}
+      />,
+    );
+    expect(document.querySelector('.phrase')?.textContent).toBe('No score');
+  });
+});
+
+describe('Table announcing the cut', () => {
+  it('names the cut cards and the Dealer while the cut lingers', () => {
+    render(
+      <Table
+        model={{
+          ...showModel,
+          stage: 'cutting',
+          cuts: [parseCard('4H'), parseCard('JS')],
+          dealer: 0,
+          shows: [],
+          lastTally: null,
+        }}
+        human={0}
+        legal={[]}
+        humanToAct={false}
+        pause={{ kind: 'after', ms: 2100 }}
+        onAct={() => undefined}
+        onContinue={() => undefined}
+        onNewGame={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toBe(
+      'You cut a 4, Computer cut a Jack. You deal.',
+    );
+  });
+});
+
+describe('Table Pegging chips', () => {
+  // The fold drops a Pegging Tally when the next card lands (see session.test);
+  // here the chips only ever attach to the newest card.
+  it('puts a chip for each Combination beside the card just played', () => {
+    const fifteen = { kind: 'fifteen' as const, points: 2, cards: [] };
+    const pair = { kind: 'pair' as const, points: 2, cards: [] };
+    render(
+      <Table
+        model={{
+          ...showModel,
+          stage: 'pegging',
+          shows: [],
+          sequence: [
+            { seat: 1, card: parseCard('7H') },
+            { seat: 0, card: parseCard('8S') },
+          ],
+          count: 15,
+          lastTally: {
+            seat: 0,
+            source: 'pegging',
+            tally: { total: 4, combinations: [fifteen, pair] },
+          },
+        }}
+        human={0}
+        legal={[]}
+        humanToAct={false}
+        pause={{ kind: 'after', ms: 1000 }}
+        onAct={() => undefined}
+        onContinue={() => undefined}
+        onNewGame={() => undefined}
+      />,
+    );
+    const slot = screen.getByLabelText('8 of spades').parentElement;
+    const chips = [...(slot?.querySelectorAll('.chip') ?? [])];
+    expect(chips.map((c) => c.textContent)).toEqual(['Fifteen 2', 'Pair 2']);
+    expect(
+      screen
+        .getByLabelText('7 of hearts')
+        .parentElement?.querySelector('.chip'),
+    ).toBeNull();
   });
 });

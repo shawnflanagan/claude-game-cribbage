@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  makeTally,
   parseCard,
   parseCards,
   seatsToAct,
@@ -164,6 +165,14 @@ describe('session: engine ahead, presentation behind', () => {
     }
     expect(present(session).stage).toBe('show');
     expect(present(session).shows).toHaveLength(1);
+    // It is counted out one Combination at a time before anything else.
+    const combinations = present(session).shows[0]?.tally.combinations ?? [];
+    for (let i = 0; i < combinations.length; i++) {
+      expect(present(session).counted).toBe(i);
+      expect(nextPause(session)).toEqual({ kind: 'after', ms: 700 });
+      session = reveal(session);
+    }
+    expect(present(session).counted).toBe(combinations.length);
     // Its scored Event rides along without a press, then Continue is needed.
     if (session.events[session.revealed]?.type === 'scored') {
       expect(nextPause(session)).toEqual({ kind: 'after', ms: 0 });
@@ -367,5 +376,131 @@ describe('session: played piles', () => {
     expect(present({ ...session, revealed: end + 1 }).playedPile).toEqual([
       4, 4,
     ]);
+  });
+});
+
+describe('session: pacing inside and around Events', () => {
+  const staged = (events: readonly GameEvent[], revealed: number): Session => ({
+    ...startSession(1),
+    events,
+    revealed,
+    counted: 0,
+  });
+  const cut: GameEvent = {
+    type: 'cut-for-deal',
+    cuts: [parseCard('4H'), parseCard('JS')],
+    dealer: 0,
+  };
+  const dealt: GameEvent = {
+    type: 'dealt',
+    dealer: 0,
+    round: 1,
+    hands: [parseCards('5H 6H 7H 8H 9H TH'), parseCards('5S 6S 7S 8S 9S TS')],
+  };
+  const played: GameEvent = {
+    type: 'card-played',
+    seat: 1,
+    card: parseCard('5S'),
+    count: 15,
+  };
+  const tally: GameEvent = {
+    type: 'tally',
+    seat: 1,
+    tally: makeTally([
+      { kind: 'fifteen', points: 2, cards: parseCards('TH 5S') },
+    ]),
+  };
+  const next: GameEvent = {
+    type: 'card-played',
+    seat: 0,
+    card: parseCard('6H'),
+    count: 21,
+  };
+
+  it('lets the cut cards linger with the Dealer announced before dealing', () => {
+    expect(nextPause(staged([cut, dealt], 1))).toEqual({
+      kind: 'after',
+      ms: 2100,
+    });
+  });
+
+  it('drops a Pegging Tally once the next card lands, so chips never move', () => {
+    const withTally = present(staged([played, tally, next], 2));
+    expect(withTally.lastTally?.source).toBe('pegging');
+    const afterNext = present(staged([played, tally, next], 3));
+    expect(afterNext.lastTally).toBeNull();
+  });
+
+  it('shows a Pegging Tally soon after its card and lets it linger', () => {
+    expect(nextPause(staged([played, tally, next], 1))).toEqual({
+      kind: 'after',
+      ms: 300,
+    });
+    expect(nextPause(staged([played, tally, next], 2))).toEqual({
+      kind: 'after',
+      ms: 1000,
+    });
+  });
+
+  it('counts a Show out one Combination per step, then scores, then waits', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'hand',
+      cards: parseCards('5H 5S 6D JC'),
+      tally: makeTally([
+        { kind: 'fifteen', points: 2, cards: parseCards('5H JC') },
+        { kind: 'pair', points: 2, cards: parseCards('5H 5S') },
+      ]),
+    };
+    const scored: GameEvent = {
+      type: 'scored',
+      seat: 0,
+      points: 4,
+      scores: [4, 0],
+    };
+    const nextShow: GameEvent = {
+      ...show,
+      seat: 1,
+      cards: parseCards('2H 4S 6D KC'),
+    };
+    let session = staged([show, scored, nextShow], 1);
+    expect(present(session).counted).toBe(0);
+    expect(nextPause(session)).toEqual({ kind: 'after', ms: 700 });
+    session = reveal(session);
+    expect(present(session).counted).toBe(1);
+    expect(present(session).scores).toEqual([0, 0]);
+    session = reveal(session);
+    expect(present(session).counted).toBe(2);
+    expect(nextPause(session)).toEqual({ kind: 'after', ms: 0 });
+    session = reveal(session);
+    expect(present(session).scores).toEqual([4, 0]);
+    expect(nextPause(session)).toEqual({ kind: 'continue' });
+  });
+
+  it('needs no counting steps for a Hand worth nothing', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'hand',
+      cards: parseCards('2H 4S 6D KC'),
+      tally: makeTally([]),
+    };
+    const session = staged([show], 1);
+    expect(nextPause(session)).toEqual({ kind: 'idle' });
+    expect(present(session).counted).toBe(0);
+  });
+
+  it('is fully counted once everything is revealed at once', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'crib',
+      cards: parseCards('5H 5S 6D JC'),
+      tally: makeTally([
+        { kind: 'fifteen', points: 2, cards: parseCards('5H JC') },
+      ]),
+    };
+    expect(revealAll(staged([show], 0)).counted).toBe(1);
   });
 });
