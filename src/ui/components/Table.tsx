@@ -105,7 +105,7 @@ export function Table({
             <div className="deck-area">
               <span className="label">Starter</span>
               {model.starter === null ? (
-                <CardBack />
+                <CardBack slot="deck" />
               ) : (
                 <CardView card={model.starter} lit={isLit(model.starter)} />
               )}
@@ -113,13 +113,20 @@ export function Table({
             <div className="crib-area">
               <span className="label">Crib</span>
               <div className="cards">
-                {model.crib !== null
-                  ? model.crib.map((c) => (
-                      <CardView key={cardKey(c)} card={c} lit={isLit(c)} />
-                    ))
-                  : Array.from({ length: model.cribSize }, (_, i) => (
-                      <CardBack key={i} />
+                {model.crib !== null ? (
+                  model.crib.map((c) => (
+                    <CardView key={cardKey(c)} card={c} lit={isLit(c)} />
+                  ))
+                ) : (
+                  <>
+                    {model.discards[human].map((c) => (
+                      <CardBack key={cardKey(c)} of={c} />
                     ))}
+                    {model.discards[computer].map((_, i) => (
+                      <CardBack key={i} slot={`crib-${String(i)}`} />
+                    ))}
+                  </>
+                )}
               </div>
               {model.dealer !== null && phraseFor(model.dealer, 'crib')}
             </div>
@@ -147,7 +154,7 @@ export function Table({
           {model.dealer === human && <span className="badge">Dealer</span>}
           {model.saidGo === human && <span className="badge">Go</span>}
         </header>
-        {model.stage === 'discarding' && !model.discarded[human] ? (
+        {model.stage === 'discarding' && model.discards[human].length === 0 ? (
           <DiscardHand
             cards={model.hands[human]}
             enabled={humanToAct}
@@ -189,8 +196,10 @@ function statusLine(
         ? 'Cutting for the deal.'
         : describeCut(model.cuts, model.dealer, human);
     case 'discarding':
-      if (model.discarded.every(Boolean)) return 'Cutting the Starter.';
-      if (model.discarded[human]) return 'Waiting for the Computer to discard.';
+      if (model.discards.every((d) => d.length > 0))
+        return 'Cutting the Starter.';
+      if (model.discards[human].length > 0)
+        return 'Waiting for the Computer to discard.';
       return humanToAct ? 'Choose your Discard for the Crib.' : 'Dealing.';
     case 'pegging':
       return humanToAct ? 'Your play.' : 'Computer is thinking.';
@@ -259,16 +268,16 @@ function PlayRow({ seat, human, row, model }: PlayRowProps) {
       <span
         className="played-pile"
         role="img"
-        aria-label={`${String(pile)} played earlier`}
+        aria-label={`${String(pile.length)} played earlier`}
         style={{ gridRow: row, gridColumn: 1 }}
       >
-        {pile > 0 && (
-          <>
-            <CardBack />
-            <span className="pile-count" aria-hidden="true">
-              {pile}
-            </span>
-          </>
+        {pile.map((card) => (
+          <CardBack key={cardKey(card)} of={card} />
+        ))}
+        {pile.length > 0 && (
+          <span className="pile-count" aria-hidden="true">
+            {pile.length}
+          </span>
         )}
       </span>
       {model.sequence.map((played, i) =>

@@ -109,7 +109,7 @@ export function HiddenHand({ size }: { size: number }) {
     <div className="hand">
       <div className="cards">
         {Array.from({ length: size }, (_, i) => (
-          <CardBack key={i} />
+          <CardBack key={i} slot={`hidden-${String(i)}`} />
         ))}
       </div>
     </div>

@@ -121,8 +121,8 @@ describe('session: engine ahead, presentation behind', () => {
     const start = revealAll(startSession(7));
     const model = present(revealAll(discardFirstTwo(start)));
     expect(model.hands[HUMAN]).toHaveLength(4);
-    expect(model.discarded[HUMAN]).toBe(true);
-    expect(model.cribSize).toBe(2);
+    expect(model.discards[HUMAN]).toHaveLength(2);
+    expect(model.discards[1]).toHaveLength(0);
   });
 
   it('presents the Starter, the Count, and the played cards during Pegging', () => {
@@ -134,7 +134,7 @@ describe('session: engine ahead, presentation behind', () => {
     expect(model.starter).toEqual(session.engine.starter);
     expect(model.count).toBe(0);
     expect(model.sequence).toEqual([]);
-    expect(model.cribSize).toBe(4);
+    expect(model.discards.map((d) => d.length)).toEqual([2, 2]);
   });
 
   it('presents the engine scores once caught up', () => {
@@ -340,42 +340,47 @@ describe('session: played piles', () => {
 
   it('starts every Round with both piles empty and the sequence bare', () => {
     const model = presentEvents(round.slice(0, 2));
-    expect(model.playedPile).toEqual([0, 0]);
+    expect(model.playedPile).toEqual([[], []]);
     expect(model.sequence).toEqual([]);
   });
 
   it("sweeps each Seat's played cards into its pile at every Count reset", () => {
     const before = presentEvents(round.slice(0, 6));
     expect(before.sequence).toHaveLength(4);
-    expect(before.playedPile).toEqual([0, 0]);
+    expect(before.playedPile).toEqual([[], []]);
 
     const first = presentEvents(round.slice(0, 7));
     expect(first.sequence).toEqual([]);
     expect(first.count).toBe(0);
-    expect(first.playedPile).toEqual([2, 2]);
+    expect(first.playedPile).toEqual([
+      parseCards('8H 7H'),
+      parseCards('8S 7S'),
+    ]);
 
     const second = presentEvents(round.slice(0, 11));
-    expect(second.playedPile).toEqual([4, 3]);
+    expect(second.playedPile.map((pile) => pile.length)).toEqual([4, 3]);
   });
 
   it('holds all eight cards across the two piles once Pegging ends', () => {
     const model = presentEvents(round.slice(0, 13));
     expect(model.stage).toBe('show');
     expect(model.sequence).toEqual([]);
-    expect(model.playedPile).toEqual([4, 4]);
+    expect(model.playedPile.map((pile) => pile.length)).toEqual([4, 4]);
   });
 
   it('empties both piles when the next Round deals', () => {
-    expect(presentEvents(round).playedPile).toEqual([0, 0]);
+    expect(presentEvents(round).playedPile).toEqual([[], []]);
   });
 
   it('matches what the engine actually plays', () => {
     const session = pegOut(startSession(7));
     const end = session.events.findIndex((e) => e.type === 'pegging-ended');
     expect(end).toBeGreaterThan(0);
-    expect(present({ ...session, revealed: end + 1 }).playedPile).toEqual([
-      4, 4,
-    ]);
+    expect(
+      present({ ...session, revealed: end + 1 }).playedPile.map(
+        (p) => p.length,
+      ),
+    ).toEqual([4, 4]);
   });
 });
 

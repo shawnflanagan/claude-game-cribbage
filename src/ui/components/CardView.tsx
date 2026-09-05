@@ -1,5 +1,5 @@
 import type { Card } from '../../engine';
-import { isCourt, pipLayout, rankLabel, suitGlyph } from '../cards';
+import { cardKey, isCourt, pipLayout, rankLabel, suitGlyph } from '../cards';
 
 const SUIT_NAMES = {
   clubs: 'clubs',
@@ -42,7 +42,12 @@ export function CardView({ card, onClick, disabled, selected, lit }: Props) {
   const face = <CardFace card={card} />;
   if (onClick === undefined) {
     return (
-      <span className={className} aria-label={cardName(card)} role="img">
+      <span
+        className={className}
+        style={transitionName(card)}
+        aria-label={cardName(card)}
+        role="img"
+      >
         {face}
       </span>
     );
@@ -51,6 +56,7 @@ export function CardView({ card, onClick, disabled, selected, lit }: Props) {
     <button
       type="button"
       className={className}
+      style={transitionName(card)}
       aria-label={cardName(card)}
       aria-pressed={selected}
       disabled={disabled}
@@ -60,6 +66,21 @@ export function CardView({ card, onClick, disabled, selected, lit }: Props) {
     </button>
   );
 }
+
+/**
+ * The same card keeps one name wherever it is rendered, so a view transition
+ * moves it from Hand to table to pile instead of fading it out and in.
+ */
+function transitionName(card: Card): { viewTransitionName: string } {
+  return { viewTransitionName: `card-${cardKey(card)}` };
+}
+
+type BackProps = {
+  /** The card this back hides, when the viewer is allowed to know it. */
+  of?: Card;
+  /** Otherwise a stable name for the slot, so the back still enters and leaves. */
+  slot?: string;
+};
 
 /**
  * The printed face: an index in two corners, and either the pips of a number
@@ -119,6 +140,13 @@ function CardIndex({
   );
 }
 
-export function CardBack() {
-  return <span className="card card-back" aria-hidden="true" />;
+/** Face down. Given the card it hides, it inherits that card's motion. */
+export function CardBack({ of, slot }: BackProps) {
+  const style =
+    of !== undefined
+      ? transitionName(of)
+      : slot !== undefined
+        ? { viewTransitionName: `slot-${slot}` }
+        : undefined;
+  return <span className="card card-back" style={style} aria-hidden="true" />;
 }
