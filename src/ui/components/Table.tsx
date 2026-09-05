@@ -103,7 +103,7 @@ export function Table({
             </div>
           </div>
         )}
-        <p className="status" aria-live="polite">
+        <p className="status" role="status">
           {statusLine(model, human, humanToAct, who)}
         </p>
         {model.lastTally !== null && (
