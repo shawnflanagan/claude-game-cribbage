@@ -1,5 +1,5 @@
 import { cardValue, JACK, type Card, type Rank } from './cards';
-import { isRun, pairOf } from './combinations';
+import { pairOf } from './combinations';
 import { makeTally, type Combination, type Tally } from './tally';
 
 export type ShowInput = {
@@ -12,8 +12,12 @@ export type ShowInput = {
 
 /**
  * Scores a Hand or the Crib together with the Starter, listing every
- * Combination in the order you would count them aloud: Fifteens,
- * Pairs, Runs, Flush, Nobs.
+ * Combination in the order you would count them aloud: Fifteens, Pairs,
+ * Runs, Flush, Nobs.
+ *
+ * Subsets of the five cards are bitmasks over their positions, which keeps
+ * the hot loop free of allocation: an opponent weighing a Discard calls
+ * this hundreds of times per decision.
  */
 export function scoreShow(input: ShowInput): Tally {
   const all = [...input.cards, input.starter];
@@ -26,19 +30,25 @@ export function scoreShow(input: ShowInput): Tally {
   ]);
 }
 
-function subsets(cards: readonly Card[]): Card[][] {
-  const result: Card[][] = [];
-  for (let mask = 1; mask < 1 << cards.length; mask++) {
-    result.push(cards.filter((_, i) => (mask & (1 << i)) !== 0));
-  }
-  return result;
+function pick(cards: readonly Card[], mask: number): Card[] {
+  return cards.filter((_, i) => (mask & (1 << i)) !== 0);
 }
 
 /** Every distinct set of cards whose values sum to exactly 15. */
 function fifteens(cards: readonly Card[]): Combination[] {
-  return subsets(cards)
-    .filter((s) => s.reduce((sum, c) => sum + cardValue(c), 0) === 15)
-    .map((s) => ({ kind: 'fifteen', points: 2, cards: s }));
+  const values = cards.map(cardValue);
+  const result: Combination[] = [];
+  const masks = 1 << cards.length;
+  for (let mask = 1; mask < masks; mask++) {
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      if ((mask & (1 << i)) !== 0) sum += values[i] ?? 0;
+    }
+    if (sum === 15) {
+      result.push({ kind: 'fifteen', points: 2, cards: pick(cards, mask) });
+    }
+  }
+  return result;
 }
 
 function pairs(cards: readonly Card[]): Combination[] {
@@ -52,23 +62,44 @@ function pairs(cards: readonly Card[]): Combination[] {
   });
 }
 
+/** Whether the cards selected by `mask` are three or more consecutive ranks. */
+function isRunMask(ranks: readonly number[], mask: number): boolean {
+  let seen = 0;
+  let size = 0;
+  for (let i = 0; i < ranks.length; i++) {
+    if ((mask & (1 << i)) === 0) continue;
+    const bit = 1 << (ranks[i] ?? 0);
+    if ((seen & bit) !== 0) return false;
+    seen |= bit;
+    size++;
+  }
+  if (size < 3) return false;
+  // Consecutive ranks make one unbroken block of bits.
+  const lowest = seen & -seen;
+  return seen / lowest + 1 === 1 << size;
+}
+
 /**
  * Every maximal Run: a set of three or more consecutive ranks that is not
  * part of a longer Run. Duplicated ranks yield one Run per way of choosing
  * them, which is how a double run scores twice.
  */
 function runs(cards: readonly Card[]): Combination[] {
-  const candidates = subsets(cards).filter(isRun);
-  return candidates
+  const ranks = cards.map((c) => c.rank);
+  const masks = 1 << cards.length;
+  const runMasks: number[] = [];
+  for (let mask = 1; mask < masks; mask++) {
+    if (isRunMask(ranks, mask)) runMasks.push(mask);
+  }
+  return runMasks
     .filter(
-      (run) =>
-        !candidates.some(
-          (other) =>
-            other.length > run.length &&
-            run.every((card) => other.includes(card)),
-        ),
+      (mask) =>
+        !runMasks.some((other) => other !== mask && (other & mask) === mask),
     )
-    .map((run) => ({ kind: 'run', points: run.length, cards: run }));
+    .map((mask) => {
+      const run = pick(cards, mask);
+      return { kind: 'run', points: run.length, cards: run };
+    });
 }
 
 function flush({ cards, starter, isCrib }: ShowInput): Combination[] {

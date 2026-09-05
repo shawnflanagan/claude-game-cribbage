@@ -1,6 +1,6 @@
 // The pure cribbage engine. Framework-free, deterministic, no I/O.
 // See docs/adr/0001-pure-engine-ui-as-thin-consumer.md and CONTEXT.md.
-export { cardValue, parseCard, parseCards, sameCard } from './cards';
+export { cardValue, fullDeck, parseCard, parseCards, sameCard } from './cards';
 export type { Card, Rank, Suit } from './cards';
 export {
   DISCARD_SIZE,
@@ -24,10 +24,12 @@ export type {
   Skunk,
   View,
 } from './game';
+export { MAX_COUNT, tallyForPlay } from './pegging';
 export type { PeggingEvent, PlayedCard } from './pegging';
 export { createRng, nextInt } from './random';
 export type { Draw, Rng } from './random';
 export { otherSeat, withSeat } from './seat';
+export { scoreShow } from './show';
 export type { PerSeat, Seat } from './seat';
 export type { Combination, CombinationKind, Tally } from './tally';
 export type { Violation } from './violation';

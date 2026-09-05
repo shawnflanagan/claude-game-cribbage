@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { otherSeat } from '../engine';
-import { randomOpponent } from '../opponent';
+import { heuristicOpponent } from '../opponent';
 import { GameOver } from './components/GameOver';
 import { Log } from './components/Log';
 import { Table } from './components/Table';
@@ -22,7 +22,7 @@ export function App({
     window.confirm('Abandon this game and start a new one?'),
 }: Props) {
   const [firstSeed] = useState(() => seed ?? freshSeed());
-  const game = useGame(firstSeed, randomOpponent, pace);
+  const game = useGame(firstSeed, heuristicOpponent, pace);
   const { session } = game;
   const human = session.human;
   const model = present(session);

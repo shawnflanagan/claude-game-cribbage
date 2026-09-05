@@ -148,7 +148,23 @@ function endSequence(state: PeggingState, lastSeat: Seat): Step {
 
 /** The Combinations the newest card in the sequence makes. */
 function scorePlay(sequence: readonly PlayedCard[], count: number): Tally {
-  const cards = sequence.map((p) => p.card);
+  return tallyForCards(
+    sequence.map((p) => p.card),
+    count,
+  );
+}
+
+/**
+ * What playing `card` after `before` would score. Lets an opponent weigh a
+ * play without touching Pegging state.
+ */
+export function tallyForPlay(before: readonly Card[], card: Card): Tally {
+  const cards = [...before, card];
+  const count = cards.reduce((sum, c) => sum + cardValue(c), 0);
+  return tallyForCards(cards, count);
+}
+
+function tallyForCards(cards: readonly Card[], count: number): Tally {
   const combinations: Combination[] = [];
   if (count === 15) combinations.push({ kind: 'fifteen', points: 2, cards });
   if (count === MAX_COUNT) {
