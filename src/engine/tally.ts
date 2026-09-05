@@ -9,7 +9,8 @@ export type CombinationKind =
   | 'flush'
   | 'nobs'
   | 'thirty-one'
-  | 'last-card';
+  | 'last-card'
+  | 'heels';
 
 /** One scoring item: what kind, how many points, and which cards made it. */
 export type Combination = {
