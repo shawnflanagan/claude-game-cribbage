@@ -510,7 +510,8 @@ button.card.card-selected:focus-visible {
   justify-items: center;
   max-width: 100%;
   overflow-x: auto;
-  padding: 0.25rem;
+  /* Room below the rows for the chips that hang off the newest card. */
+  padding: 0.25rem 0.25rem 0.9rem;
 }
 
 .play-row {
