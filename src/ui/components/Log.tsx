@@ -18,7 +18,7 @@ export function Log({ events, human }: Props) {
   return (
     <section className="log" aria-label="Log" ref={box}>
       <h2>Log</h2>
-      <ol aria-live="polite">
+      <ol>
         {lines.map((line, i) => (
           <li key={i}>{line}</li>
         ))}

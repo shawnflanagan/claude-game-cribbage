@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { sameCard, type Card } from '../../engine';
+import { DISCARD_SIZE, sameCard, type Card } from '../../engine';
+import { cardKey } from '../cards';
 import { CardBack, CardView } from './CardView';
 
 type DiscardProps = {
@@ -15,7 +16,7 @@ export function DiscardHand({ cards, enabled, onDiscard }: DiscardProps) {
     setSelected((current) =>
       current.some((c) => sameCard(c, card))
         ? current.filter((c) => !sameCard(c, card))
-        : current.length < 2
+        : current.length < DISCARD_SIZE
           ? [...current, card]
           : current,
     );
@@ -27,7 +28,7 @@ export function DiscardHand({ cards, enabled, onDiscard }: DiscardProps) {
       <div className="cards">
         {cards.map((card) => (
           <CardView
-            key={key(card)}
+            key={cardKey(card)}
             card={card}
             selected={selected.some((c) => sameCard(c, card))}
             disabled={!enabled}
@@ -68,7 +69,7 @@ export function PeggingHand({ cards, legal, onPlay }: PeggingProps) {
       <div className="cards">
         {cards.map((card) => (
           <CardView
-            key={key(card)}
+            key={cardKey(card)}
             card={card}
             disabled={!legal.some((c) => sameCard(c, card))}
             onClick={() => {
@@ -86,7 +87,7 @@ export function ShownHand({ cards }: { cards: readonly Card[] }) {
     <div className="hand">
       <div className="cards">
         {cards.map((card) => (
-          <CardView key={key(card)} card={card} />
+          <CardView key={cardKey(card)} card={card} />
         ))}
       </div>
     </div>
@@ -103,8 +104,4 @@ export function HiddenHand({ size }: { size: number }) {
       </div>
     </div>
   );
-}
-
-function key(card: Card): string {
-  return `${String(card.rank)}-${card.suit}`;
 }

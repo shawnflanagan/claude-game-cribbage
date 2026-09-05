@@ -2,9 +2,11 @@ import {
   apply,
   createRng,
   newGame,
+  otherSeat,
   sameCard,
   seatsToAct,
   viewFor,
+  withSeat,
   type Action,
   type Card,
   type GameEvent,
@@ -25,6 +27,7 @@ import type { Opponent } from '../opponent';
  * the table catches up at a human pace (ADR 0003).
  */
 export type Session = {
+  /** Kept so the Game can be saved and replayed (ADR 0002). */
   readonly seed: number;
   readonly human: Seat;
   readonly engine: GameState;
@@ -57,15 +60,19 @@ export function humanAct(session: Session, action: Action): Session {
   };
 }
 
-/** Lets the Computer act if it is a Seat to act; null when it is not. */
+/** Whether the engine is waiting on the Computer's Seat. */
+export function computerToAct(session: Session): boolean {
+  const computer = otherSeat(session.human);
+  return seatsToAct(viewFor(session.engine, computer)).includes(computer);
+}
+
+/** Lets the Computer act if the engine is waiting on it; null when not. */
 export function computerAct(
   session: Session,
   opponent: Opponent,
 ): Session | null {
-  const computer: Seat = session.human === 0 ? 1 : 0;
-  if (!seatsToAct(viewFor(session.engine, computer)).includes(computer)) {
-    return null;
-  }
+  if (!computerToAct(session)) return null;
+  const computer = otherSeat(session.human);
   const choice = opponent(
     viewFor(session.engine, computer),
     session.opponentRng,
@@ -98,24 +105,30 @@ export type Pause =
 
 export const COMPUTER_MOVE_MS = 600;
 
+/** Events nobody sees on their own: they ride along with the one before. */
+function isBookkeeping(event: GameEvent): boolean {
+  return event.type === 'scored' || event.type === 'round-ended';
+}
+
 /**
  * How the next unrevealed Event should arrive: after a delay so the human
  * can follow the Computer, at once for the human's own doings, or only when
  * they press Continue after reading a Show count.
  */
-export function nextPause(session: Session, human: Seat): Pause {
+export function nextPause(session: Session): Pause {
   const next = session.events[session.revealed];
   if (next === undefined) return { kind: 'idle' };
-  const previous = lastVisible(session);
-  if (previous?.type === 'show-counted') return { kind: 'continue' };
-  return { kind: 'after', ms: delayBefore(next, human) };
+  if (isBookkeeping(next)) return { kind: 'after', ms: 0 };
+  if (lastVisible(session)?.type === 'show-counted')
+    return { kind: 'continue' };
+  return { kind: 'after', ms: delayBefore(next, session.human) };
 }
 
 /** The most recent revealed Event that a person would notice. */
 function lastVisible(session: Session): GameEvent | undefined {
   for (let i = session.revealed - 1; i >= 0; i--) {
     const event = session.events[i];
-    if (event !== undefined && event.type !== 'scored') return event;
+    if (event !== undefined && !isBookkeeping(event)) return event;
   }
   return undefined;
 }
@@ -144,9 +157,9 @@ function delayBefore(event: GameEvent, human: Seat): number {
   }
 }
 
-export type Stage = 'cutting' | 'discarding' | 'pegging' | 'showing' | 'over';
+export type Stage = 'cutting' | 'discarding' | 'pegging' | 'show' | 'over';
 
-export type Scoring = {
+export type LastTally = {
   readonly seat: Seat;
   readonly tally: Tally;
   readonly source: 'pegging' | 'heels' | 'hand' | 'crib';
@@ -171,7 +184,7 @@ export type TableModel = {
   readonly sequence: readonly PlayedCard[];
   readonly count: number;
   readonly saidGo: Seat | null;
-  readonly lastScoring: Scoring | null;
+  readonly lastTally: LastTally | null;
   readonly shows: readonly ShowCounted[];
   readonly result: GameResult | null;
 };
@@ -191,7 +204,7 @@ const EMPTY: TableModel = {
   sequence: [],
   count: 0,
   saidGo: null,
-  lastScoring: null,
+  lastTally: null,
   shows: [],
   result: null,
 };
@@ -204,9 +217,9 @@ function without(
   hands: PerSeat<readonly Card[]>,
   seat: Seat,
   cards: readonly Card[],
-) {
+): PerSeat<readonly Card[]> {
   const kept = hands[seat].filter((c) => !cards.some((d) => sameCard(c, d)));
-  return seat === 0 ? ([kept, hands[1]] as const) : ([hands[0], kept] as const);
+  return withSeat(hands, seat, kept);
 }
 
 function step(model: TableModel, event: GameEvent): TableModel {
@@ -231,10 +244,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
       return {
         ...model,
         hands: without(model.hands, event.seat, event.cards),
-        discarded:
-          event.seat === 0
-            ? [true, model.discarded[1]]
-            : [model.discarded[0], true],
+        discarded: withSeat(model.discarded, event.seat, true),
         cribSize: model.cribSize + event.cards.length,
       };
     case 'starter-cut':
@@ -247,7 +257,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
     case 'heels':
       return {
         ...model,
-        lastScoring: { seat: event.seat, tally: event.tally, source: 'heels' },
+        lastTally: { seat: event.seat, tally: event.tally, source: 'heels' },
       };
     case 'card-played':
       return {
@@ -255,35 +265,24 @@ function step(model: TableModel, event: GameEvent): TableModel {
         hands: without(model.hands, event.seat, [event.card]),
         sequence: [...model.sequence, { seat: event.seat, card: event.card }],
         count: event.count,
-        saidGo: null,
       };
     case 'tally':
       return {
         ...model,
-        lastScoring: {
-          seat: event.seat,
-          tally: event.tally,
-          source: 'pegging',
-        },
+        lastTally: { seat: event.seat, tally: event.tally, source: 'pegging' },
       };
     case 'go':
       return { ...model, saidGo: event.seat };
     case 'sequence-ended':
       return { ...model, sequence: [], count: 0, saidGo: null };
     case 'pegging-ended':
-      return {
-        ...model,
-        stage: 'showing',
-        sequence: [],
-        count: 0,
-        saidGo: null,
-      };
+      return { ...model, stage: 'show', sequence: [], count: 0, saidGo: null };
     case 'show-counted':
       return {
         ...model,
         shows: [...model.shows, event],
         crib: event.source === 'crib' ? event.cards : model.crib,
-        lastScoring: {
+        lastTally: {
           seat: event.seat,
           tally: event.tally,
           source: event.source,

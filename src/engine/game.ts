@@ -17,6 +17,8 @@ export const SKUNK_LINE = 91;
 export const DOUBLE_SKUNK_LINE = 61;
 const HAND_SIZE = 6;
 const KEPT_SIZE = 4;
+/** A Discard is exactly two cards. */
+export const DISCARD_SIZE = 2;
 
 /**
  * Where a Game is waiting for a decision. Everything mechanical happens
@@ -82,7 +84,7 @@ export type GameEvent =
   | { type: 'starter-cut'; card: Card }
   | { type: 'heels'; seat: Seat; tally: Tally }
   | ShowCounted
-  /** Follows every Event that carries a Tally, with the scores after it. */
+  /** Follows every Event that carries a Tally worth points, with the scores after it. */
   | { type: 'scored'; seat: Seat; points: number; scores: PerSeat<number> }
   | { type: 'round-ended'; round: number }
   | { type: 'game-won'; result: GameResult }
@@ -208,7 +210,7 @@ function applyDiscard(
   if (hand.length !== HAND_SIZE) return refuse('not-your-turn');
   const [a, b] = cards;
   if (
-    cards.length !== 2 ||
+    cards.length !== DISCARD_SIZE ||
     a === undefined ||
     b === undefined ||
     sameCard(a, b)

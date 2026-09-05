@@ -1,9 +1,10 @@
 import { useEffect, useReducer } from 'react';
-import { seatsToAct, viewFor, type Action, type Seat } from '../engine';
+import { seatsToAct, viewFor, type Action, type Card } from '../engine';
 import type { Opponent } from '../opponent';
 import {
   caughtUp,
   computerAct,
+  computerToAct,
   humanAct,
   nextPause,
   reveal,
@@ -12,22 +13,22 @@ import {
   type Session,
 } from './session';
 
-type Dispatch =
+type Command =
   | { type: 'human'; action: Action }
   | { type: 'computer'; opponent: Opponent }
   | { type: 'reveal' }
   | { type: 'new-game'; seed: number };
 
-function reduce(session: Session, message: Dispatch): Session {
-  switch (message.type) {
+function reduce(session: Session, command: Command): Session {
+  switch (command.type) {
     case 'human':
-      return humanAct(session, message.action);
+      return humanAct(session, command.action);
     case 'computer':
-      return computerAct(session, message.opponent) ?? session;
+      return computerAct(session, command.opponent) ?? session;
     case 'reveal':
       return reveal(session);
     case 'new-game':
-      return startSession(message.seed);
+      return startSession(command.seed);
   }
 }
 
@@ -36,6 +37,8 @@ export type Game = {
   readonly pause: Pause;
   /** True when the table shows the engine's real state and the human must act. */
   readonly humanToAct: boolean;
+  /** The human's legal Pegging cards, empty unless it is their turn to play. */
+  readonly legal: readonly Card[];
   readonly act: (action: Action) => void;
   readonly continueShow: () => void;
   readonly newGame: (seed: number) => void;
@@ -45,37 +48,36 @@ export type Game = {
  * Owns one Game for the UI: applies the human's Actions, lets the opponent
  * move whenever the engine is waiting on it, and walks the presentation
  * cursor at a human pace. `pace` scales every delay; 0 makes tests instant.
+ * The seed only seeds the first Game; later Games come from `newGame`.
  */
 export function useGame(seed: number, opponent: Opponent, pace = 1): Game {
   const [session, dispatch] = useReducer(reduce, seed, startSession);
-  const human: Seat = session.human;
-  const pause = nextPause(session, human);
+  const pause = nextPause(session);
 
   useEffect(() => {
-    const computer: Seat = human === 0 ? 1 : 0;
-    if (seatsToAct(viewFor(session.engine, computer)).includes(computer)) {
-      dispatch({ type: 'computer', opponent });
-    }
-  }, [session, human, opponent]);
+    if (computerToAct(session)) dispatch({ type: 'computer', opponent });
+  }, [session, opponent]);
 
+  const delay = pause.kind === 'after' ? pause.ms * pace : null;
   useEffect(() => {
-    if (pause.kind !== 'after') return;
+    if (delay === null) return;
     const timer = setTimeout(() => {
       dispatch({ type: 'reveal' });
-    }, pause.ms * pace);
+    }, delay);
     return () => {
       clearTimeout(timer);
     };
-  }, [session, pause, pace]);
+  }, [session.revealed, session.events.length, delay]);
 
+  const view = viewFor(session.engine, session.human);
   const humanToAct =
-    caughtUp(session) &&
-    seatsToAct(viewFor(session.engine, human)).includes(human);
+    caughtUp(session) && seatsToAct(view).includes(session.human);
 
   return {
     session,
     pause,
     humanToAct,
+    legal: humanToAct ? (view.pegging?.legal ?? []) : [],
     act: (action) => {
       dispatch({ type: 'human', action });
     },

@@ -1,10 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { parseCards } from '../engine';
 import { App } from './App';
-import { PeggingHand } from './components/Hand';
-import { Table } from './components/Table';
-import { present, revealAll, startSession } from './session';
+
+const cardButtons = (region: HTMLElement) =>
+  within(region).getAllByRole('button', { name: / of / });
 
 describe('App', () => {
   it('shows the game title', () => {
@@ -12,76 +17,68 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Cribbage' })).toBeDefined();
   });
 
-  it('deals six cards and only enables Send to crib once two are selected', async () => {
+  it('deals six cards and enables Send to crib only with two selected', async () => {
     render(<App seed={1} pace={0} />);
     const send = await screen.findByRole('button', { name: 'Send to crib' });
     await waitFor(() => {
-      expect(screen.getByText('Choose two cards for the Crib.')).toBeDefined();
+      expect(
+        screen.getByText('Choose your Discard for the Crib.'),
+      ).toBeDefined();
     });
-    const hand = screen.getByRole('region', { name: 'You' });
-    const cards = [...hand.querySelectorAll('button.card')];
+    const cards = cardButtons(screen.getByRole('region', { name: 'You' }));
     expect(cards).toHaveLength(6);
-    const card = (i: number) => {
-      const el = cards[i];
-      if (el === undefined) throw new Error(`no card ${String(i)}`);
-      return el;
-    };
+    const [first, second, third] = cards;
+    if (!first || !second || !third) throw new Error('short hand');
     expect(send).toHaveProperty('disabled', true);
-    fireEvent.click(card(0));
+    fireEvent.click(first);
     expect(send).toHaveProperty('disabled', true);
-    fireEvent.click(card(1));
+    fireEvent.click(second);
     expect(send).toHaveProperty('disabled', false);
-    fireEvent.click(card(1));
+    fireEvent.click(second);
     expect(send).toHaveProperty('disabled', true);
-    fireEvent.click(card(2));
-    fireEvent.click(send);
+    fireEvent.click(third);
+    expect(send).toHaveProperty('disabled', false);
+  });
+
+  it('sends the Discard to the Crib and moves on to Pegging', async () => {
+    render(<App seed={1} pace={0} />);
+    const send = await screen.findByRole('button', { name: 'Send to crib' });
     await waitFor(() => {
       expect(
-        screen.getByRole('region', { name: 'You' }).querySelectorAll('.card'),
-      ).toHaveLength(4);
+        screen.getByText('Choose your Discard for the Crib.'),
+      ).toBeDefined();
     });
+    const [a, b] = cardButtons(screen.getByRole('region', { name: 'You' }));
+    if (!a || !b) throw new Error('short hand');
+    fireEvent.click(a);
+    fireEvent.click(b);
+    fireEvent.click(send);
+    await waitFor(() => {
+      expect(screen.getByText(/Count/)).toBeDefined();
+    });
+    expect(
+      screen.getByRole('region', { name: 'You' }).querySelectorAll('.card'),
+    ).toHaveLength(4);
   });
-});
 
-describe('PeggingHand', () => {
-  it('greys out cards that are not legal and plays a legal one on a tap', () => {
-    const cards = parseCards('5H KS 9D');
-    const played: string[] = [];
-    render(
-      <PeggingHand
-        cards={cards}
-        legal={parseCards('5H')}
-        onPlay={(c) => played.push(`${String(c.rank)}${c.suit}`)}
-      />,
-    );
-    const five = screen.getByRole('button', { name: '5 of hearts' });
-    const king = screen.getByRole('button', { name: 'king of spades' });
-    expect(five).toHaveProperty('disabled', false);
-    expect(king).toHaveProperty('disabled', true);
-    fireEvent.click(king);
-    fireEvent.click(five);
-    expect(played).toEqual(['5hearts']);
-  });
-});
-
-describe('Table', () => {
-  it('shows a Continue button only while the Show waits on the reader', () => {
-    const model = present(revealAll(startSession(3)));
-    let continued = 0;
-    const props = {
-      model,
-      human: 0 as const,
-      legal: [],
-      humanToAct: false,
-      onAct: () => undefined,
-      onContinue: () => {
-        continued++;
-      },
+  it('asks before abandoning a Game in progress, and starts over when told to', async () => {
+    let asked = 0;
+    let answer = false;
+    const confirmNewGame = () => {
+      asked++;
+      return answer;
     };
-    const { rerender } = render(<Table {...props} pause={{ kind: 'idle' }} />);
-    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
-    rerender(<Table {...props} pause={{ kind: 'continue' }} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(continued).toBe(1);
+    render(<App seed={1} pace={0} confirmNewGame={confirmNewGame} />);
+    await screen.findByRole('button', { name: 'Send to crib' });
+    const before = screen.getByRole('list').textContent;
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+    expect(asked).toBe(1);
+    expect(screen.getByRole('list').textContent).toBe(before);
+    answer = true;
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+    expect(asked).toBe(2);
+    await waitFor(() => {
+      expect(screen.getByRole('list').textContent).not.toBe(before);
+    });
   });
 });

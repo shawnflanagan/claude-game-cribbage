@@ -40,7 +40,7 @@ describe('Log lines', () => {
       'You send 5♥ K♠ to the Crib.',
     );
     expect(describeEvent({ type: 'discarded', seat: 1, cards }, human)).toBe(
-      'Computer sends two cards to the Crib.',
+      'Computer sends a Discard to the Crib.',
     );
   });
 

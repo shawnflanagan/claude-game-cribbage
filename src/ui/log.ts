@@ -1,55 +1,75 @@
-import {
-  formatCard,
-  type Card,
-  type Combination,
-  type GameEvent,
-  type Seat,
-  type Tally,
+import type {
+  Card,
+  Combination,
+  GameEvent,
+  GameResult,
+  Seat,
+  Tally,
 } from '../engine';
+import { otherSeat } from '../engine';
+import { formatCard } from './cards';
+
+export function seatName(seat: Seat, human: Seat): string {
+  return seat === human ? 'You' : 'Computer';
+}
+
+/** "You count" but "Computer counts". */
+function verb(seat: Seat, human: Seat, base: string): string {
+  return seat === human ? base : `${base}s`;
+}
+
+export function describeSkunk(result: GameResult): string | null {
+  switch (result.skunk) {
+    case 'double-skunk':
+      return 'A Double Skunk!';
+    case 'skunk':
+      return 'A Skunk!';
+    case 'none':
+      return null;
+  }
+}
 
 /** The Log in glossary words. Returns null for Events not worth a line. */
 export function describeEvent(event: GameEvent, human: Seat): string | null {
-  const who = (seat: Seat) => (seat === human ? 'You' : 'Computer');
-  const verb = (seat: Seat, base: string) =>
-    seat === human ? base : `${base}s`;
+  const who = (seat: Seat) => seatName(seat, human);
+  const does = (seat: Seat, base: string) => verb(seat, human, base);
   switch (event.type) {
     case 'cut-for-deal': {
       const [a, b] = event.cuts;
-      const cut = `${who(0)} ${verb(0, 'cut')} ${formatCard(a)}, ${who(1)} ${verb(1, 'cut')} ${formatCard(b)}.`;
+      const cut = `${who(0)} ${does(0, 'cut')} ${formatCard(a)}, ${who(1)} ${does(1, 'cut')} ${formatCard(b)}.`;
       return event.dealer === null
         ? `${cut} A tie, cut again.`
-        : `${cut} ${who(event.dealer)} ${verb(event.dealer, 'deal')}.`;
+        : `${cut} ${who(event.dealer)} ${does(event.dealer, 'deal')}.`;
     }
     case 'dealt':
-      return `Round ${String(event.round)}. ${who(event.dealer)} ${verb(event.dealer, 'deal')}.`;
+      return `Round ${String(event.round)}. ${who(event.dealer)} ${does(event.dealer, 'deal')}.`;
     case 'discarded':
       return event.seat === human
         ? `You send ${cards(event.cards)} to the Crib.`
-        : 'Computer sends two cards to the Crib.';
+        : 'Computer sends a Discard to the Crib.';
     case 'starter-cut':
       return `The Starter is ${formatCard(event.card)}.`;
     case 'heels':
-      return `${who(event.seat)} ${verb(event.seat, 'score')} Heels for 2.`;
+      return `${who(event.seat)} ${does(event.seat, 'score')} ${combinations(event.tally)}.`;
     case 'card-played':
-      return `${who(event.seat)} ${verb(event.seat, 'play')} ${formatCard(event.card)} for ${String(event.count)}.`;
+      return `${who(event.seat)} ${does(event.seat, 'play')} ${formatCard(event.card)} for ${String(event.count)}.`;
     case 'tally':
-      return `${who(event.seat)} ${verb(event.seat, 'score')} ${combinations(event.tally)}.`;
+      return `${who(event.seat)} ${does(event.seat, 'score')} ${combinations(event.tally)}.`;
     case 'go':
-      return `${who(event.seat)} ${verb(event.seat, 'say')} Go.`;
+      return `${who(event.seat)} ${does(event.seat, 'say')} Go.`;
     case 'show-counted': {
       const what = event.source === 'crib' ? 'the Crib ' : '';
       const total =
         event.tally.total === 0
           ? 'for nothing'
           : `for ${String(event.tally.total)}: ${combinations(event.tally)}`;
-      return `Show: ${who(event.seat)} ${verb(event.seat, 'count')} ${what}${cards(event.cards)} ${total}.`;
+      return `Show: ${who(event.seat)} ${does(event.seat, 'count')} ${what}${cards(event.cards)} ${total}.`;
     }
     case 'game-won': {
-      const { winner, scores, skunk } = event.result;
-      const line = `${who(winner)} ${verb(winner, 'win')} ${String(scores[winner])} to ${String(scores[winner === 0 ? 1 : 0])}.`;
-      if (skunk === 'double-skunk') return `${line} A Double Skunk!`;
-      if (skunk === 'skunk') return `${line} A Skunk!`;
-      return line;
+      const { winner, scores } = event.result;
+      const line = `${who(winner)} ${does(winner, 'win')} ${String(scores[winner])} to ${String(scores[otherSeat(winner)])}.`;
+      const skunk = describeSkunk(event.result);
+      return skunk === null ? line : `${line} ${skunk}`;
     }
     case 'scored':
     case 'sequence-ended':

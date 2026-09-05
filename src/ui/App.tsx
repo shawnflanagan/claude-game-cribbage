@@ -1,4 +1,5 @@
-import { viewFor } from '../engine';
+import { useState } from 'react';
+import { otherSeat } from '../engine';
 import { randomOpponent } from '../opponent';
 import { GameOver } from './components/GameOver';
 import { Log } from './components/Log';
@@ -7,6 +8,7 @@ import { present } from './session';
 import { useGame } from './useGame';
 
 type Props = {
+  /** Seed of the first Game; a fresh one is drawn when omitted. */
   seed?: number;
   /** Scales the presentation delays; 0 makes everything instant for tests. */
   pace?: number;
@@ -14,17 +16,16 @@ type Props = {
 };
 
 export function App({
-  seed = freshSeed(),
+  seed,
   pace = 1,
   confirmNewGame = () =>
     window.confirm('Abandon this game and start a new one?'),
 }: Props) {
-  const game = useGame(seed, randomOpponent, pace);
+  const [firstSeed] = useState(() => seed ?? freshSeed());
+  const game = useGame(firstSeed, randomOpponent, pace);
   const { session } = game;
   const human = session.human;
   const model = present(session);
-  const view = viewFor(session.engine, human);
-  const legal = game.humanToAct ? (view.pegging?.legal ?? []) : [];
   const startNew = () => {
     if (model.stage === 'over' || confirmNewGame()) game.newGame(freshSeed());
   };
@@ -37,8 +38,11 @@ export function App({
             You <strong>{model.scores[human]}</strong>
           </span>
           <span>
-            Computer <strong>{model.scores[human === 0 ? 1 : 0]}</strong>
+            Computer <strong>{model.scores[otherSeat(human)]}</strong>
           </span>
+          {model.round > 0 && (
+            <span className="round">Round {model.round}</span>
+          )}
         </div>
         <button type="button" className="quiet" onClick={startNew}>
           New game
@@ -50,7 +54,7 @@ export function App({
       <Table
         model={model}
         human={human}
-        legal={legal}
+        legal={game.legal}
         humanToAct={game.humanToAct}
         pause={game.pause}
         onAct={game.act}

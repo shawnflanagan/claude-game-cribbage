@@ -1,4 +1,5 @@
-import { rankLabel, suitGlyph, type Card } from '../../engine';
+import type { Card } from '../../engine';
+import { rankLabel, suitGlyph } from '../cards';
 
 const SUIT_NAMES = {
   clubs: 'clubs',

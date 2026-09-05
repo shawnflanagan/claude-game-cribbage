@@ -1,5 +1,6 @@
-import { formatCard, type Action, type Card, type Seat } from '../../engine';
-import { combinations } from '../log';
+import { otherSeat, type Action, type Card, type Seat } from '../../engine';
+import { cardKey } from '../cards';
+import { combinations, seatName } from '../log';
 import type { Pause, TableModel } from '../session';
 import { CardBack, CardView } from './CardView';
 import { DiscardHand, HiddenHand, PeggingHand, ShownHand } from './Hand';
@@ -24,9 +25,9 @@ export function Table({
   onAct,
   onContinue,
 }: Props) {
-  const computer: Seat = human === 0 ? 1 : 0;
-  const who = (seat: Seat) => (seat === human ? 'You' : 'Computer');
-  const showing = model.stage === 'showing' || model.stage === 'over';
+  const computer = otherSeat(human);
+  const who = (seat: Seat) => seatName(seat, human);
+  const showing = model.stage === 'show' || model.stage === 'over';
   const computerShown = model.shows.some(
     (s) => s.seat === computer && s.source === 'hand',
   );
@@ -75,7 +76,7 @@ export function Table({
               <div className="cards">
                 {model.crib !== null
                   ? model.crib.map((c) => (
-                      <CardView key={formatCard(c)} card={c} />
+                      <CardView key={cardKey(c)} card={c} />
                     ))
                   : Array.from({ length: model.cribSize }, (_, i) => (
                       <CardBack key={i} />
@@ -88,10 +89,10 @@ export function Table({
           <div className="play-area">
             <div className="cards">
               {model.sequence.map((p) => (
-                <CardView key={formatCard(p.card)} card={p.card} />
+                <CardView key={cardKey(p.card)} card={p.card} />
               ))}
             </div>
-            <div className="count" aria-live="polite">
+            <div className="count">
               Count <strong>{model.count}</strong>
             </div>
           </div>
@@ -99,10 +100,9 @@ export function Table({
         <p className="status" aria-live="polite">
           {statusLine(model, human, humanToAct, who)}
         </p>
-        {model.lastScoring !== null && (
+        {model.lastTally !== null && (
           <p className="scoring">
-            {who(model.lastScoring.seat)}:{' '}
-            {combinations(model.lastScoring.tally)}
+            {who(model.lastTally.seat)}: {combinations(model.lastTally.tally)}
           </p>
         )}
         {pause.kind === 'continue' && (
@@ -152,13 +152,14 @@ function statusLine(
     case 'cutting':
       return 'Cutting for the deal.';
     case 'discarding':
+      if (model.discarded.every(Boolean)) return 'Cutting the Starter.';
       if (model.discarded[human]) return 'Waiting for the Computer to discard.';
-      return humanToAct ? 'Choose two cards for the Crib.' : 'Dealing.';
+      return humanToAct ? 'Choose your Discard for the Crib.' : 'Dealing.';
     case 'pegging':
       return humanToAct ? 'Your play.' : 'Computer is thinking.';
-    case 'showing': {
+    case 'show': {
       const last = model.shows.at(-1);
-      if (last === undefined) return 'Counting hands.';
+      if (last === undefined) return 'The Show.';
       const what = last.source === 'crib' ? 'the Crib' : 'the Hand';
       return `${who(last.seat)} ${last.seat === human ? 'count' : 'counts'} ${what} for ${String(last.tally.total)}.`;
     }

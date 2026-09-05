@@ -112,9 +112,9 @@ describe('session: engine ahead, presentation behind', () => {
     expect(model.cribSize).toBe(4);
   });
 
-  it('presents scores from the scored Events, not by adding up Tallies itself', () => {
+  it('presents the engine scores once caught up', () => {
     let session = untilPegging(startSession(7));
-    for (let i = 0; i < 40 && session.engine.phase !== 'game-over'; i++) {
+    for (let i = 0; i < 40 && session.engine.round === 1; i++) {
       const turn = viewFor(session.engine, 0).pegging?.turn;
       if (turn === undefined) break;
       if (turn === HUMAN) {
@@ -124,19 +124,14 @@ describe('session: engine ahead, presentation behind', () => {
       } else {
         session = computerAct(session, randomOpponent) ?? session;
       }
-      if (session.engine.round > 1) break;
     }
     const model = present(revealAll(session));
-    const lastScored = [...session.events]
-      .reverse()
-      .find((e) => e.type === 'scored');
-    if (lastScored?.type === 'scored')
-      expect(model.scores).toEqual(lastScored.scores);
+    expect(model.scores).toEqual(session.engine.scores);
+    expect(model.scores[0] + model.scores[1]).toBeGreaterThan(0);
   });
 
-  it('marks the Show as needing Continue after each count, and the deal as ready to go', () => {
+  it('needs one Continue after each Show count, revealing the score with it', () => {
     let session = untilPegging(startSession(7));
-    // Play out the Round with first-legal cards on both sides.
     for (let i = 0; i < 40; i++) {
       const view = viewFor(session.engine, 0);
       const turn = view.pegging?.turn;
@@ -149,15 +144,37 @@ describe('session: engine ahead, presentation behind', () => {
         session = computerAct(session, randomOpponent) ?? session;
       }
     }
-    // Reveal up to and including the first Show count.
-    while (session.events[session.revealed]?.type !== 'show-counted') {
+    // Reveal automatically until the first Show count is on the table.
+    while (session.events[session.revealed - 1]?.type !== 'show-counted') {
+      expect(nextPause(session).kind).toBe('after');
       session = reveal(session);
     }
-    session = reveal(session); // the show-counted itself
-    session = reveal(session); // its scored
-    expect(nextPause(session, HUMAN)).toEqual({ kind: 'continue' });
-    expect(present(session).stage).toBe('showing');
+    expect(present(session).stage).toBe('show');
     expect(present(session).shows).toHaveLength(1);
+    // Its scored Event rides along without a press, then Continue is needed.
+    if (session.events[session.revealed]?.type === 'scored') {
+      expect(nextPause(session)).toEqual({ kind: 'after', ms: 0 });
+      session = reveal(session);
+    }
+    expect(nextPause(session)).toEqual({ kind: 'continue' });
+    expect(present(session).scores).toEqual(
+      session.events
+        .slice(0, session.revealed)
+        .filter((e) => e.type === 'scored')
+        .at(-1)?.scores ?? [0, 0],
+    );
+    // One press per remaining count; the deal after the Crib needs one more.
+    let presses = 0;
+    while (
+      session.events[session.revealed]?.type !== 'dealt' &&
+      !caughtUp(session)
+    ) {
+      const pause = nextPause(session);
+      if (pause.kind === 'continue') presses++;
+      session = reveal(session);
+    }
+    expect(presses).toBe(2);
+    expect(nextPause(session)).toEqual({ kind: 'continue' });
   });
 
   it('paces Computer cards with a delay and the human own cards instantly', () => {
@@ -180,10 +197,8 @@ describe('session: engine ahead, presentation behind', () => {
       ...session,
       events: [...session.events, ...cards],
     };
-    expect(nextPause(staged, HUMAN)).toEqual({ kind: 'after', ms: 600 });
-    expect(
-      nextPause({ ...staged, revealed: staged.revealed + 1 }, HUMAN),
-    ).toEqual({
+    expect(nextPause(staged)).toEqual({ kind: 'after', ms: 600 });
+    expect(nextPause({ ...staged, revealed: staged.revealed + 1 })).toEqual({
       kind: 'after',
       ms: 0,
     });
@@ -191,7 +206,7 @@ describe('session: engine ahead, presentation behind', () => {
 
   it('is idle once caught up', () => {
     const session = revealAll(startSession(7));
-    expect(nextPause(session, HUMAN)).toEqual({ kind: 'idle' });
+    expect(nextPause(session)).toEqual({ kind: 'idle' });
   });
 
   it('presents the result once the Game is won', () => {
