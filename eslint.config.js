@@ -19,7 +19,50 @@ export default tseslint.config(
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
-      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
+    files: ['eslint.config.js', 'vite.config.ts'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    // The pure layers (CLAUDE.md, "Coding standards"): no clock, no
+    // ambient randomness, no timers, no browser or storage I/O. Randomness
+    // comes from the seeded source carried in game state.
+    files: ['src/engine/**/*.ts', 'src/opponent/**/*.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...[
+          'Date',
+          'setTimeout',
+          'setInterval',
+          'queueMicrotask',
+          'requestAnimationFrame',
+          'window',
+          'document',
+          'localStorage',
+          'sessionStorage',
+          'fetch',
+          'console',
+        ].map((name) => ({
+          name,
+          message: `${name} is not allowed in the pure engine and opponent layers.`,
+        })),
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Use the seeded randomness carried in game state, never Math.random.',
+        },
+      ],
     },
   },
   {
@@ -30,9 +73,9 @@ export default tseslint.config(
         typescript: { alwaysTryTypes: true, project: './tsconfig.app.json' },
       },
       'boundaries/elements': [
-        { type: 'engine', pattern: 'src/engine/**', partialMatch: false },
-        { type: 'opponent', pattern: 'src/opponent/**', partialMatch: false },
-        { type: 'ui', pattern: 'src/ui/**', partialMatch: false },
+        { type: 'engine', pattern: 'src/engine/**' },
+        { type: 'opponent', pattern: 'src/opponent/**' },
+        { type: 'ui', pattern: 'src/ui/**' },
       ],
       // The Vite entry point sits beside the layers, not inside one.
       'boundaries/files': [{ category: 'entry', pattern: 'src/*.tsx' }],
@@ -46,7 +89,6 @@ export default tseslint.config(
           // and the React ban below would never fire.
           checkAllOrigins: true,
           policies: [
-            // Any other external package is fine anywhere.
             { allow: { to: { module: { origin: 'external' } } } },
             // React never enters the pure layers. Listed after the general
             // external allow because the last matching policy wins.
@@ -72,15 +114,10 @@ export default tseslint.config(
               },
             },
             {
-              from: { element: { type: 'ui' } },
-              allow: {
-                to: {
-                  element: { types: { anyOf: ['ui', 'engine', 'opponent'] } },
-                },
-              },
-            },
-            {
-              from: { file: { categories: 'entry' } },
+              from: [
+                { element: { type: 'ui' } },
+                { file: { categories: 'entry' } },
+              ],
               allow: {
                 to: {
                   element: { types: { anyOf: ['ui', 'engine', 'opponent'] } },

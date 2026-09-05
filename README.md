@@ -19,8 +19,8 @@ pnpm build        # production build into dist/
 
 ## How it's put together
 
-- `src/engine/` is the game: pure TypeScript, immutable state, seeded randomness, no React.
-- `src/opponent/` is the computer player. It sees only what a human in its seat would.
-- `src/ui/` renders state and sends actions. It contains no rules of cribbage.
+- `src/engine/` will hold the game: pure TypeScript, immutable state, seeded randomness, no React.
+- `src/opponent/` will hold the computer opponent. It sees only what a human in its Seat would.
+- `src/ui/` renders state and sends Actions. It contains no rules of cribbage.
 
 The layer boundaries are enforced by ESLint. Why it's built this way is in `docs/adr/`. The vocabulary the code uses is in `CONTEXT.md`.
