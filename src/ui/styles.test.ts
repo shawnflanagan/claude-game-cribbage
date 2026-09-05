@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import css from './styles.css?raw';
 
-const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(/;
+const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/;
 
 describe('the stylesheet', () => {
-  it('keeps every colour in a token, so dark mode can redefine them all', () => {
+  it('keeps every hex, rgb, and hsl colour in a token, so dark mode can redefine them', () => {
     const strays = css
       .split('\n')
       .map((line, i) => [i + 1, line] as const)

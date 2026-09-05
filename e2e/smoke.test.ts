@@ -21,22 +21,13 @@ function watchErrors(page: Page): string[] {
 
 test('plays a Round through the Show without console errors', async ({
   page,
-}, testInfo) => {
+}) => {
   const errors = watchErrors(page);
   // A broken page usually stalls the Round; report the error, not the stall.
   const failed = () =>
     errors.length > 0 ? `page errors: ${errors.join(' | ')}` : null;
 
   await page.goto(`/?seed=${String(SEED)}`);
-
-  // The table follows the system scheme; the felt token tells which one won.
-  const dark = testInfo.project.use.colorScheme === 'dark';
-  const felt = await page.evaluate(() =>
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--felt')
-      .trim(),
-  );
-  expect(felt).toBe(dark ? '#234b2c' : '#285a31');
 
   const status = page.getByRole('status');
   const you = page.getByRole('region', { name: 'You' });
@@ -86,5 +77,24 @@ test('plays a Round through the Show without console errors', async ({
     .toBe('Choose your Discard for the Crib.');
 
   await expect(page.getByLabel('Scores')).toContainText('Round 2');
+  expect(errors).toEqual([]);
+});
+
+test('follows the system colour scheme', async ({ page }, testInfo) => {
+  const errors = watchErrors(page);
+  await page.goto(`/?seed=${String(SEED)}`);
+  const felt = () =>
+    page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--felt'),
+    );
+  const dark = testInfo.project.use.colorScheme === 'dark';
+  expect(
+    await page.evaluate(
+      () => window.matchMedia('(prefers-color-scheme: dark)').matches,
+    ),
+  ).toBe(dark);
+  const asIs = await felt();
+  await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
+  expect(await felt()).not.toBe(asIs);
   expect(errors).toEqual([]);
 });
