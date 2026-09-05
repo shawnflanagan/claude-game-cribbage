@@ -8,6 +8,7 @@ import {
 } from '../../engine';
 import { cardKey } from '../cards';
 import { combinations, describeCut, seatName } from '../log';
+import type { GameRecord } from '../record';
 import type { LastTally, Pause, TableModel } from '../session';
 import { chipLabel, countingOrder, showPhrase } from '../show';
 import { CardBack, CardView } from './CardView';
@@ -24,6 +25,8 @@ type Props = {
   onAct: (action: Action) => void;
   onContinue: () => void;
   onNewGame: () => void;
+  record: GameRecord;
+  onResetRecord: () => void;
 };
 
 export function Table({
@@ -35,6 +38,8 @@ export function Table({
   onAct,
   onContinue,
   onNewGame,
+  record,
+  onResetRecord,
 }: Props) {
   const computer = otherSeat(human);
   const who = (seat: Seat) => seatName(seat, human);
@@ -79,7 +84,13 @@ export function Table({
 
       <section className="middle">
         {model.stage === 'over' && model.result !== null && (
-          <GameOver result={model.result} human={human} onNewGame={onNewGame} />
+          <GameOver
+            result={model.result}
+            human={human}
+            record={record}
+            onNewGame={onNewGame}
+            onResetRecord={onResetRecord}
+          />
         )}
         {model.stage === 'cutting' && model.cuts !== null && (
           <div className="cut" aria-label="Cut for deal">

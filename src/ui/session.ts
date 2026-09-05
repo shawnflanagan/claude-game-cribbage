@@ -12,6 +12,7 @@ import {
   type GameEvent,
   type GameResult,
   type GameState,
+  type NewGameOptions,
   type PerSeat,
   type PlayedCard,
   type Rng,
@@ -30,6 +31,8 @@ export type Session = {
   /** Kept so the Game can be saved and replayed (ADR 0002). */
   readonly seed: number;
   readonly human: Seat;
+  /** Where the scores began: zero, or a handicap. Replayed with the seed. */
+  readonly startingScores: PerSeat<number>;
   readonly engine: GameState;
   readonly events: readonly GameEvent[];
   /** Every accepted Action so far: with the seed, the whole Game (ADR 0002). */
@@ -43,11 +46,16 @@ export type Session = {
   readonly opponentRng: Rng;
 };
 
-export function startSession(seed: number, human: Seat = 0): Session {
-  const { state, events } = newGame(seed);
+export function startSession(
+  seed: number,
+  human: Seat = 0,
+  options: NewGameOptions = {},
+): Session {
+  const { state, events } = newGame(seed, options);
   return {
     seed,
     human,
+    startingScores: options.scores ?? [0, 0],
     engine: state,
     events,
     actions: [],
