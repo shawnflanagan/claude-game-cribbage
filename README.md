@@ -13,7 +13,8 @@ pnpm install
 pnpm dev          # start the dev server
 pnpm test         # run the tests once
 pnpm test:watch   # run the tests on change
-pnpm check        # typecheck, lint, format check, test: what CI runs
+pnpm test:e2e     # play a Round in headless Chromium against the built site
+pnpm check        # typecheck, lint, format check, test; CI runs these plus test:e2e
 pnpm build        # production build into dist/
 ```
 

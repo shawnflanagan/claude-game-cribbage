@@ -31,7 +31,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', 'vite.config.ts'],
+    files: [
+      'eslint.config.js',
+      'vite.config.ts',
+      'playwright.config.ts',
+      'e2e/**/*.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
   {
