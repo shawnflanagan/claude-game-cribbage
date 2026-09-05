@@ -7,6 +7,8 @@ export {
   parseCard,
   parseCards,
   sameCard,
+  RANKS,
+  SUITS,
 } from './cards';
 export type { Card, Rank, Suit } from './cards';
 export {

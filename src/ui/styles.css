@@ -13,8 +13,8 @@
   --computer-peg: #8fb4ff;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   --radius: 0.75rem;
-  --card-w: 3.4rem;
-  --card-h: 4.7rem;
+  --card-w: 3.75rem;
+  --card-h: 5.2rem;
   font-family:
     system-ui,
     -apple-system,
@@ -26,11 +26,11 @@
   line-height: 1.35;
 }
 
-/* Six cards plus gaps must fit a 390px phone in one row; 48px still taps well. */
+/* Six cards plus gaps must fit a 390px phone in one row; 52px still taps well. */
 @media (max-width: 26rem) {
   :root {
-    --card-w: 3rem;
-    --card-h: 4.2rem;
+    --card-w: 3.25rem;
+    --card-h: 4.5rem;
   }
 }
 
@@ -203,15 +203,13 @@ body {
   gap: 0.4rem;
 }
 
-/* Cards */
+/* Cards: drawn with text only, sized by the tokens above. */
 .card {
   position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: block;
   width: var(--card-w);
   height: var(--card-h);
-  padding: 0.3rem 0.35rem;
+  padding: 0;
   border-radius: 0.45rem;
   border: 1px solid #d6cfbd;
   background: var(--paper);
@@ -228,17 +226,84 @@ body {
     opacity 140ms ease;
 }
 
-.card-rank {
-  font-size: 1.15rem;
-}
-
-.card-suit {
-  font-size: 1.6rem;
-  align-self: flex-end;
-}
-
 .card-red {
   color: var(--red);
+}
+
+/* Corner indices: rank over suit, the bottom one turned like a real card. */
+.card-index {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: calc(var(--card-w) * 0.22);
+  line-height: 1;
+}
+
+.card-index-bottom {
+  top: auto;
+  left: auto;
+  right: 0.2rem;
+  bottom: 0.15rem;
+  transform: rotate(180deg);
+}
+
+/* Pips sit on a grid inset from the indices; rows are percentages. */
+.card-pips {
+  position: absolute;
+  inset: calc(var(--card-h) * 0.25) calc(var(--card-w) * 0.34);
+  font-size: calc(var(--card-w) * 0.24);
+}
+
+.card-pip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
+
+.card-pip-left {
+  left: 0;
+}
+
+.card-pip-centre {
+  left: 50%;
+}
+
+.card-pip-right {
+  left: 100%;
+}
+
+.card-pip-inverted {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.card-pips-ace {
+  font-size: calc(var(--card-w) * 0.6);
+}
+
+/* Court cards: a framed letter with the suit under it, no picture. */
+.card-court {
+  position: absolute;
+  inset: calc(var(--card-h) * 0.2) calc(var(--card-w) * 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.2rem;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.card-court-letter {
+  font-size: calc(var(--card-w) * 0.42);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.card-court-suit {
+  font-size: calc(var(--card-w) * 0.26);
 }
 
 button.card {
@@ -276,9 +341,26 @@ button.card.card-selected:focus-visible {
   outline-offset: 5px;
 }
 
+/* Backs: a lattice inside a white frame, unmistakably face down. */
 .card-back {
-  background: repeating-linear-gradient(45deg, #5a6fb0 0 4px, #46579a 4px 8px);
   border-color: #2e3a6b;
+  background:
+    repeating-linear-gradient(
+        45deg,
+        transparent 0 5px,
+        rgba(255, 255, 255, 0.22) 5px 6px
+      )
+      padding-box,
+    repeating-linear-gradient(
+        -45deg,
+        transparent 0 5px,
+        rgba(255, 255, 255, 0.22) 5px 6px
+      )
+      padding-box,
+    #46579a padding-box;
+  box-shadow:
+    inset 0 0 0 3px var(--paper),
+    var(--shadow);
 }
 
 /* Middle of the table */

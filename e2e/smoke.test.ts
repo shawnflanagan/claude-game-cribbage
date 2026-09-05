@@ -37,6 +37,15 @@ test('plays a Round through the Show without console errors', async ({
   // Any two cards are a legal Discard, so the first two will do.
   await expect(status).toHaveText('Choose your Discard for the Crib.');
   await expect(hand).toHaveCount(6);
+  // Six cards fit one row on a phone, and nothing pushes the page sideways.
+  const tops = await hand.evaluateAll((cards) =>
+    cards.map((card) => card.getBoundingClientRect().top),
+  );
+  expect(new Set(tops).size).toBe(1);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
   await hand.nth(0).click();
   await hand.nth(1).click();
   await page.getByRole('button', { name: 'Send to crib' }).click();
