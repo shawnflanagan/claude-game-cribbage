@@ -91,18 +91,7 @@ export function Table({
             </div>
           </div>
         )}
-        {model.stage === 'pegging' && (
-          <div className="play-area">
-            <div className="cards">
-              {model.sequence.map((p) => (
-                <CardView key={cardKey(p.card)} card={p.card} />
-              ))}
-            </div>
-            <div className="count">
-              Count <strong>{model.count}</strong>
-            </div>
-          </div>
-        )}
+        {model.stage === 'pegging' && <PlayRows model={model} human={human} />}
         <p className="status" role="status">
           {statusLine(model, human, humanToAct, who)}
         </p>
@@ -172,4 +161,82 @@ function statusLine(
     case 'over':
       return 'Game over.';
   }
+}
+
+/**
+ * Pegging as two rows, one per Seat, so who played what is never in doubt.
+ * Cards keep their play order left to right across both rows; the Count sits
+ * between them; each Seat's earlier sequences lie face down beside its row.
+ */
+function PlayRows({ model, human }: { model: TableModel; human: Seat }) {
+  const computer = otherSeat(human);
+  const columns = Math.max(model.sequence.length, 1);
+  return (
+    <div
+      className="play-rows"
+      role="group"
+      aria-label="Pegging"
+      style={{
+        gridTemplateColumns: `var(--card-w) repeat(${String(columns)}, var(--card-w))`,
+      }}
+    >
+      <PlayRow seat={computer} human={human} row={1} model={model} />
+      <div className="count" style={{ gridRow: 2, gridColumn: '1 / -1' }}>
+        Count <strong>{model.count}</strong>
+      </div>
+      <PlayRow seat={human} human={human} row={3} model={model} />
+    </div>
+  );
+}
+
+type PlayRowProps = {
+  seat: Seat;
+  human: Seat;
+  /** The grid row this Seat's cards occupy. */
+  row: number;
+  model: TableModel;
+};
+
+function PlayRow({ seat, human, row, model }: PlayRowProps) {
+  const mine = seat === human;
+  const pile = model.playedPile[seat];
+  return (
+    <div
+      className={`play-row play-row-${mine ? 'human' : 'computer'}`}
+      role="group"
+      aria-label={mine ? 'Your played cards' : "Computer's played cards"}
+    >
+      <span
+        className="play-row-tint"
+        aria-hidden="true"
+        style={{ gridRow: row, gridColumn: '1 / -1' }}
+      />
+      <span
+        className="played-pile"
+        role="img"
+        aria-label={`${String(pile)} played earlier`}
+        style={{ gridRow: row, gridColumn: 1 }}
+      >
+        {pile > 0 && (
+          <>
+            <CardBack />
+            <span className="pile-count" aria-hidden="true">
+              {pile}
+            </span>
+          </>
+        )}
+      </span>
+      {model.sequence.map((played, i) =>
+        played.seat === seat ? (
+          <span
+            key={cardKey(played.card)}
+            className="play-slot"
+            style={{ gridRow: row, gridColumn: i + 2 }}
+          >
+            <CardView card={played.card} />
+          </span>
+        ) : null,
+      )}
+    </div>
+  );
 }
