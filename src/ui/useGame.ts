@@ -18,6 +18,7 @@ import {
   type Pause,
   type Session,
 } from './session';
+import { withMotion } from './motion';
 import { clearGame, loadGame, saveGame } from './storage';
 
 type Command =
@@ -73,6 +74,13 @@ export function useGame(
       startSession(seed, 0, firstGame),
   );
   const pause = nextPause(session);
+  // Steps that move cards on the table run inside a view transition. A human
+  // Action changes nothing visible by itself; its Events are revealed next.
+  const move = (command: Command) => {
+    withMotion(() => {
+      dispatch(command);
+    });
+  };
 
   // Save after every accepted Action, whichever Seat took it. The Action
   // list is a new array only when one lands, so reveals do not rewrite.
@@ -90,7 +98,7 @@ export function useGame(
   useEffect(() => {
     if (delay === null) return;
     const timer = setTimeout(() => {
-      dispatch({ type: 'reveal' });
+      move({ type: 'reveal' });
     }, delay);
     return () => {
       clearTimeout(timer);
@@ -110,11 +118,11 @@ export function useGame(
       dispatch({ type: 'human', action });
     },
     continueShow: () => {
-      dispatch({ type: 'reveal' });
+      move({ type: 'reveal' });
     },
     newGame: (next) => {
       if (storage !== null) clearGame(storage);
-      dispatch({ type: 'new-game', seed: next });
+      move({ type: 'new-game', seed: next });
     },
   };
 }

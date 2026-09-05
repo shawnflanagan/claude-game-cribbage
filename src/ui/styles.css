@@ -38,6 +38,47 @@
   box-sizing: border-box;
 }
 
+/*
+ * Motion (ADR 0004): only cards take part in a view transition. The page
+ * itself is not snapshotted, so text updates at once while each named card
+ * glides from where it was to where it is.
+ */
+:root {
+  view-transition-name: none;
+}
+
+.card {
+  view-transition-class: card;
+}
+
+::view-transition-group(.card) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* A card with nowhere to come from is dealt in; one with nowhere to go fades. */
+::view-transition-new(.card):only-child {
+  animation: 240ms ease-out both card-enter;
+}
+
+::view-transition-old(.card):only-child {
+  animation: 180ms ease-in both card-leave;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-1.25rem) scale(0.92);
+  }
+}
+
+@keyframes card-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -336,8 +377,11 @@ button.card.card-selected:hover:not(:disabled) {
     0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
 }
 
-/* Part of the Combination being counted out: lifted, with a gold glow. */
+/* Part of the Combination being counted out: lifted, with a gold glow. The
+   lift is instant in the DOM so the view transition, not a CSS transition,
+   carries the card up. */
 .card-lit {
+  transition: none;
   transform: translateY(-0.4rem);
   box-shadow:
     0 0 0 3px var(--accent),
@@ -461,8 +505,22 @@ button.card.card-selected:focus-visible {
   outline-offset: -1px;
 }
 
+/* Swept cards stack face down, each nudged a hair so the pile looks thick. */
 .played-pile .card {
-  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.played-pile .card:nth-child(2) {
+  transform: translate(1px, -1px);
+}
+
+.played-pile .card:nth-child(3) {
+  transform: translate(2px, -2px);
+}
+
+.played-pile .card:nth-child(4) {
+  transform: translate(3px, -3px);
 }
 
 .pile-count {
@@ -738,6 +796,13 @@ button.card.card-selected:focus-visible {
   }
 
   .chip {
+    animation: none;
+  }
+
+  /* No transitions are started under reduced motion; this covers any in flight. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     animation: none;
   }
 

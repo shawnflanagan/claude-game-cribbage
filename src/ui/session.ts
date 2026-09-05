@@ -232,15 +232,15 @@ export type TableModel = {
   readonly hands: PerSeat<readonly Card[]>;
   /** The four cards each Seat kept for the Show, known once the Starter is cut. */
   readonly kept: PerSeat<readonly Card[]>;
-  readonly discarded: PerSeat<boolean>;
-  readonly cribSize: number;
+  /** What each Seat sent to the Crib; the Computer's are never shown face up. */
+  readonly discards: PerSeat<readonly Card[]>;
   /** The Crib's cards, once the Show reveals them. */
   readonly crib: readonly Card[] | null;
   readonly starter: Card | null;
   readonly sequence: readonly PlayedCard[];
   readonly count: number;
-  /** How many cards each Seat has played in earlier sequences this Round. */
-  readonly playedPile: PerSeat<number>;
+  /** The cards each Seat played in earlier sequences this Round, face down. */
+  readonly playedPile: PerSeat<readonly Card[]>;
   readonly saidGo: Seat | null;
   readonly lastTally: LastTally | null;
   readonly shows: readonly ShowCounted[];
@@ -258,13 +258,12 @@ const EMPTY: TableModel = {
   previousScores: [0, 0],
   hands: [[], []],
   kept: [[], []],
-  discarded: [false, false],
-  cribSize: 0,
+  discards: [[], []],
   crib: null,
   starter: null,
   sequence: [],
   count: 0,
-  playedPile: [0, 0],
+  playedPile: [[], []],
   saidGo: null,
   lastTally: null,
   shows: [],
@@ -293,7 +292,8 @@ function without(
  */
 function swept(model: TableModel): TableModel {
   const playedPile = model.sequence.reduce(
-    (piles, played) => withSeat(piles, played.seat, piles[played.seat] + 1),
+    (piles, played) =>
+      withSeat(piles, played.seat, [...piles[played.seat], played.card]),
     model.playedPile,
   );
   return {
@@ -332,8 +332,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
       return {
         ...model,
         hands: without(model.hands, event.seat, event.cards),
-        discarded: withSeat(model.discarded, event.seat, true),
-        cribSize: model.cribSize + event.cards.length,
+        discards: withSeat(model.discards, event.seat, event.cards),
       };
     case 'starter-cut':
       return {

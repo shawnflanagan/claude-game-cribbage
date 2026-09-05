@@ -14,13 +14,12 @@ const showModel: TableModel = {
   previousScores: [0, 0],
   hands: [[], []],
   kept: [parseCards('5H 5S 6D JC'), parseCards('2H 3S 8D KC')],
-  discarded: [true, true],
-  cribSize: 4,
+  discards: [parseCards('9H JD'), parseCards('2C 3C')],
   crib: null,
   starter: parseCard('5D'),
   sequence: [],
   count: 0,
-  playedPile: [0, 0],
+  playedPile: [[], []],
   saidGo: null,
   lastTally: {
     seat: 0,
@@ -120,7 +119,7 @@ describe('Table during Pegging', () => {
       { seat: 1, card: parseCard('TH') },
     ],
     count: 28,
-    playedPile: [1, 1],
+    playedPile: [parseCards('4C'), parseCards('5S')],
     lastTally: null,
     shows: [],
   };
@@ -176,7 +175,7 @@ describe('Table during Pegging', () => {
 
   it('shows an empty pile before the first Count reset', () => {
     render(
-      <Table {...props} model={{ ...peggingModel, playedPile: [0, 0] }} />,
+      <Table {...props} model={{ ...peggingModel, playedPile: [[], []] }} />,
     );
     const yours = screen.getByRole('group', { name: 'Your played cards' });
     expect(yours.querySelector('.played-pile .card-back')).toBeNull();
