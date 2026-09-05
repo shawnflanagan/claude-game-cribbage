@@ -125,6 +125,40 @@ _Avoid_: history, transcript, feed
 A win where the loser has fewer than 91 points. A **Double Skunk** is a win where the loser has fewer than 61.
 _Avoid_: lurch
 
+### The Board
+
+**Board**:
+The wooden scoring board: two Tracks side by side, running the length of the Board and back through a Turn, ending at the Game Holes.
+_Avoid_: scoreboard, tracker
+
+**Track**:
+One Seat's row of 121 Holes along the Board, painted in that Seat's colour. The two Tracks stay side by side, in the same order, through every Turn.
+_Avoid_: lane, stripe, path, street
+
+**Hole**:
+One point's worth of Track. Holes are grouped in fives.
+_Avoid_: pip, slot, dot
+
+**Peg**:
+A Seat's marker on its Track. Each Seat has two: the **front** peg marks the score and the **back** peg where the score was before the latest Tally; a new Tally moves the back peg ahead of the front.
+_Avoid_: marker, counter, token
+
+**Start Holes**:
+The two Holes before Hole 1 where a Seat's Pegs rest at zero.
+_Avoid_: home, zero holes
+
+**Game Hole**:
+The 121st Hole, at the end of a Track, that a front Peg reaches to win.
+_Avoid_: finish, winning hole, 121st hole
+
+**Leg**:
+A straight run of Track between Turns. The Board shows one Leg out and one back, or more when the screen is narrow.
+_Avoid_: row, side, rail
+
+**Turn**:
+Where the Tracks curve round together to begin the next Leg.
+_Avoid_: bend, curve, U-turn, hairpin
+
 ### Across Games
 
 **Record**:
