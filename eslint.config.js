@@ -24,6 +24,11 @@ export default tseslint.config(
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
+    rules: {
+      // Data in this codebase is immutable values and literal unions, which
+      // read better as `type` aliases than as interfaces.
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+    },
   },
   {
     files: ['eslint.config.js', 'vite.config.ts'],

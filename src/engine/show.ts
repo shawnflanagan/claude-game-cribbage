@@ -1,0 +1,102 @@
+import { cardValue, type Card } from './cards';
+import { makeTally, type Combination, type Tally } from './tally';
+
+export type ShowInput = {
+  /** The four cards kept in Hand, or the four in the Crib. */
+  readonly hand: readonly Card[];
+  readonly starter: Card;
+  /** The Crib only scores a Flush when all five cards match. */
+  readonly isCrib: boolean;
+};
+
+/**
+ * Scores a Hand or the Crib together with the Starter, listing every
+ * Combination in the order a player would count them aloud: Fifteens,
+ * Pairs, Runs, Flush, Nobs.
+ */
+export function scoreShow(input: ShowInput): Tally {
+  const all = [...input.hand, input.starter];
+  return makeTally([
+    ...fifteens(all),
+    ...pairs(all),
+    ...runs(all),
+    ...flush(input),
+    ...nobs(input),
+  ]);
+}
+
+function subsets(cards: readonly Card[]): Card[][] {
+  const result: Card[][] = [];
+  for (let mask = 1; mask < 1 << cards.length; mask++) {
+    result.push(cards.filter((_, i) => (mask & (1 << i)) !== 0));
+  }
+  return result;
+}
+
+/** Every distinct set of cards whose values sum to exactly 15. */
+function fifteens(cards: readonly Card[]): Combination[] {
+  return subsets(cards)
+    .filter((s) => s.reduce((sum, c) => sum + cardValue(c), 0) === 15)
+    .map((s) => ({ kind: 'fifteen', points: 2, cards: s }));
+}
+
+/** Two of a rank is a Pair, three a Pair Royal, four a Double Pair Royal. */
+function pairs(cards: readonly Card[]): Combination[] {
+  const byRank = new Map<number, Card[]>();
+  for (const card of cards) {
+    byRank.set(card.rank, [...(byRank.get(card.rank) ?? []), card]);
+  }
+  const result: Combination[] = [];
+  for (const group of byRank.values()) {
+    if (group.length === 2) {
+      result.push({ kind: 'pair', points: 2, cards: group });
+    } else if (group.length === 3) {
+      result.push({ kind: 'pair-royal', points: 6, cards: group });
+    } else if (group.length === 4) {
+      result.push({ kind: 'double-pair-royal', points: 12, cards: group });
+    }
+  }
+  return result;
+}
+
+function isRun(cards: readonly Card[]): boolean {
+  if (cards.length < 3) return false;
+  const ranks = cards.map((c) => c.rank).sort((a, b) => a - b);
+  return ranks.every((rank, i) => i === 0 || rank === (ranks[i - 1] ?? 0) + 1);
+}
+
+/**
+ * Every maximal Run: a set of three or more consecutive ranks that is not
+ * part of a longer Run. Duplicated ranks yield one Run per way of choosing
+ * them, which is how a double run scores twice.
+ */
+function runs(cards: readonly Card[]): Combination[] {
+  const candidates = subsets(cards).filter(isRun);
+  return candidates
+    .filter(
+      (run) =>
+        !candidates.some(
+          (other) =>
+            other.length > run.length &&
+            run.every((card) => other.includes(card)),
+        ),
+    )
+    .map((run) => ({ kind: 'run', points: run.length, cards: run }));
+}
+
+function flush({ hand, starter, isCrib }: ShowInput): Combination[] {
+  const first = hand[0];
+  if (first === undefined || !hand.every((c) => c.suit === first.suit)) {
+    return [];
+  }
+  if (starter.suit === first.suit) {
+    return [{ kind: 'flush', points: 5, cards: [...hand, starter] }];
+  }
+  return isCrib ? [] : [{ kind: 'flush', points: 4, cards: [...hand] }];
+}
+
+/** One for holding the Jack of the Starter's suit. */
+function nobs({ hand, starter }: ShowInput): Combination[] {
+  const jack = hand.find((c) => c.rank === 11 && c.suit === starter.suit);
+  return jack === undefined ? [] : [{ kind: 'nobs', points: 1, cards: [jack] }];
+}
