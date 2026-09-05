@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apply, newGame, type GameEvent } from '../engine';
+import { replay } from '../engine';
 import { playout } from './playout';
 import { randomOpponent } from './random';
 
@@ -16,15 +16,21 @@ describe('headless playout', () => {
 
   it('records the Action history so the Game replays exactly', () => {
     const played = playout(2, [randomOpponent, randomOpponent]);
-    let { state } = newGame(2);
-    const events: GameEvent[] = [...newGame(2).events];
-    for (const action of played.actions) {
-      const result = apply(state, action);
-      if (!result.ok) throw new Error(result.violation);
-      state = result.state;
-      events.push(...result.events);
-    }
-    expect(state).toEqual(played.state);
-    expect(events).toEqual(played.events);
+    const replayed = replay(2, played.actions);
+    if (!replayed.ok) throw new Error(replayed.violation);
+    expect(replayed.state).toEqual(played.state);
+    expect(replayed.events).toEqual(played.events);
+  });
+
+  it('names the seed when an opponent chooses an illegal Action', () => {
+    const cheat = (view: Parameters<typeof randomOpponent>[0]) => {
+      const card = view.hand[0];
+      if (card === undefined) throw new Error('empty hand');
+      return {
+        value: { type: 'play' as const, seat: view.seat, card },
+        rng: { state: 0 },
+      };
+    };
+    expect(() => playout(3, [cheat, cheat])).toThrow(/Seed 3/);
   });
 });

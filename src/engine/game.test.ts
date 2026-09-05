@@ -4,6 +4,8 @@ import {
   apply,
   gameResult,
   newGame,
+  replay,
+  seatsToAct,
   viewFor,
   type Action,
   type GameEvent,
@@ -536,5 +538,58 @@ describe('Game: the View', () => {
     const { state } = drive(newGame(2026));
     expect(viewFor(state, 0).result).toEqual(state.result);
     expect(viewFor(state, 0).phase).toBe('game-over');
+  });
+});
+
+describe('Game: replay and who is to act', () => {
+  it('replays a seed and Action history to the same state and Events', () => {
+    const actions: Action[] = [];
+    let { state } = newGame(31);
+    const events = [...newGame(31).events];
+    for (let i = 0; i < 12; i++) {
+      const action = firstLegalAction(state);
+      if (action === null) break;
+      const result = apply(state, action);
+      if (!result.ok) throw new Error(result.violation);
+      actions.push(action);
+      state = result.state;
+      events.push(...result.events);
+    }
+    const replayed = replay(31, actions);
+    if (!replayed.ok) throw new Error(replayed.violation);
+    expect(replayed.state).toEqual(state);
+    expect(replayed.events).toEqual(events);
+  });
+
+  it('reports the first Violation when a history does not fit its seed', () => {
+    const { state } = newGame(31);
+    const [a, b] = twoOf(state.hands[0]);
+    const foreign = twoOf(state.hands[1]);
+    const result = replay(31, [
+      { type: 'discard', seat: 0, cards: [a, b] },
+      { type: 'discard', seat: 0, cards: foreign },
+    ]);
+    expect(result).toEqual({ ok: false, violation: 'not-your-turn' });
+  });
+
+  it('says both Seats may Discard, then only the one still holding six', () => {
+    const { state } = newGame(31);
+    expect(seatsToAct(viewFor(state, 0))).toEqual([0, 1]);
+    const result = apply(state, {
+      type: 'discard',
+      seat: 1,
+      cards: twoOf(state.hands[1]),
+    });
+    if (!result.ok) throw new Error(result.violation);
+    expect(seatsToAct(viewFor(result.state, 0))).toEqual([0]);
+  });
+
+  it('says only the Seat on turn may act during Pegging, and nobody after the Game', () => {
+    const pegging = drive(newGame(31), untilPegging).state;
+    expect(seatsToAct(viewFor(pegging, 0))).toEqual([
+      otherSeat(pegging.dealer),
+    ]);
+    const over = drive(newGame(2026)).state;
+    expect(seatsToAct(viewFor(over, 0))).toEqual([]);
   });
 });

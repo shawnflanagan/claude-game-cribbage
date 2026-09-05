@@ -1,7 +1,7 @@
 import {
   nextInt,
+  sameCard,
   type Action,
-  type Card,
   type Draw,
   type Rng,
   type View,
@@ -11,6 +11,8 @@ import type { Opponent } from './opponent';
 function pick<T>(items: readonly T[], rng: Rng): Draw<T> {
   const draw = nextInt(rng, items.length);
   const item = items[draw.value];
+  // Unreachable while the engine only asks a Seat to act when it has a
+  // legal card, and every Hand has six cards at Discard time.
   if (item === undefined) throw new Error('nothing to pick from');
   return { value: item, rng: draw.rng };
 }
@@ -28,8 +30,10 @@ export const randomOpponent: Opponent = (
     };
   }
   const first = pick(view.hand, rng);
-  const rest: Card[] = view.hand.filter((c) => c !== first.value);
-  const second = pick(rest, first.rng);
+  const second = pick(
+    view.hand.filter((c) => !sameCard(c, first.value)),
+    first.rng,
+  );
   return {
     value: {
       type: 'discard',
