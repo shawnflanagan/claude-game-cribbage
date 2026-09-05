@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { parseCard, parseCards } from '../../engine';
 import type { TableModel } from '../session';
+import { EMPTY_RECORD } from '../record';
 import { Table } from './Table';
 
 const showModel: TableModel = {
@@ -59,6 +60,8 @@ describe('Table during the Show', () => {
     humanToAct: false,
     onAct: () => undefined,
     onNewGame: () => undefined,
+    record: EMPTY_RECORD,
+    onResetRecord: () => undefined,
   };
 
   it('shows the count, its Combinations, and the kept cards, and hides the Computer hand until counted', () => {
@@ -130,6 +133,8 @@ describe('Table during Pegging', () => {
     onAct: () => undefined,
     onContinue: () => undefined,
     onNewGame: () => undefined,
+    record: EMPTY_RECORD,
+    onResetRecord: () => undefined,
   };
 
   it('puts each played card in the row of the Seat that played it', () => {
@@ -208,6 +213,8 @@ describe('Table counting out the Show', () => {
     onAct: () => undefined,
     onContinue: () => undefined,
     onNewGame: () => undefined,
+    record: EMPTY_RECORD,
+    onResetRecord: () => undefined,
   };
   it('shows the Hand with nothing lit and no total before counting starts', () => {
     render(<Table {...props} model={{ ...model, counted: 0 }} />);
@@ -276,6 +283,8 @@ describe('Table announcing the cut', () => {
         onAct={() => undefined}
         onContinue={() => undefined}
         onNewGame={() => undefined}
+        record={EMPTY_RECORD}
+        onResetRecord={() => undefined}
       />,
     );
     expect(screen.getByRole('status').textContent).toBe(
@@ -314,6 +323,8 @@ describe('Table Pegging chips', () => {
         onAct={() => undefined}
         onContinue={() => undefined}
         onNewGame={() => undefined}
+        record={EMPTY_RECORD}
+        onResetRecord={() => undefined}
       />,
     );
     const slot = screen.getByLabelText('8 of spades').parentElement;

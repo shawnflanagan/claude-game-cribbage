@@ -643,6 +643,35 @@ button.card.card-selected:focus-visible {
   color: var(--red);
 }
 
+.record {
+  margin: 0.75rem 0 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.record p {
+  margin: 0;
+}
+
+.record-lead {
+  font-weight: 700;
+}
+
+.record-skunks {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.game-over .action + .quiet {
+  margin-left: 0.5rem;
+}
+
+/* A quiet button on the paper-white result card. */
+.quiet-dark {
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
 /* Board */
 .board {
   background: var(--wood);

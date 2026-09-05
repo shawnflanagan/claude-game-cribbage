@@ -1,5 +1,11 @@
 import { useEffect, useReducer } from 'react';
-import { seatsToAct, viewFor, type Action, type Card } from '../engine';
+import {
+  seatsToAct,
+  viewFor,
+  type Action,
+  type Card,
+  type NewGameOptions,
+} from '../engine';
 import type { Opponent } from '../opponent';
 import {
   caughtUp,
@@ -57,11 +63,14 @@ export function useGame(
   opponent: Opponent,
   pace = 1,
   storage: Storage | null = null,
+  firstGame: NewGameOptions = {},
 ): Game {
   const [session, dispatch] = useReducer(
     reduce,
     null,
-    () => (storage === null ? null : loadGame(storage)) ?? startSession(seed),
+    () =>
+      (storage === null ? null : loadGame(storage)) ??
+      startSession(seed, 0, firstGame),
   );
   const pause = nextPause(session);
 

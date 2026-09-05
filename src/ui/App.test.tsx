@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
 import { memoryStorage } from './memoryStorage';
+import { loadRecord } from './record';
 
 const cardButtons = (region: HTMLElement) =>
   within(region).getAllByRole('button', { name: / of / });
@@ -165,4 +166,120 @@ describe('App with a saved Game', () => {
       expect(saved?.seed).not.toBe(1);
     });
   });
+});
+
+describe('App and the Record', () => {
+  /** Plays whatever the table asks for until the Game is over. */
+  async function playToTheEnd(): Promise<void> {
+    await waitFor(
+      () => {
+        const you = screen.getByRole('region', { name: 'You' });
+        const send = screen.queryByRole('button', { name: 'Send to crib' });
+        if (send !== null) {
+          const [a, b] = within(you).queryAllByRole('button', { name: / of / });
+          if (a !== undefined && b !== undefined) {
+            fireEvent.click(a);
+            fireEvent.click(b);
+            if (!(send as HTMLButtonElement).disabled) fireEvent.click(send);
+          }
+        }
+        const legal = within(you)
+          .queryAllByRole('button', { name: / of / })
+          .find((c) => !(c as HTMLButtonElement).disabled);
+        if (legal !== undefined) fireEvent.click(legal);
+        const next = screen.queryByRole('button', { name: 'Continue' });
+        if (next !== null) fireEvent.click(next);
+        expect(
+          screen.getByRole('heading', { name: /You win!|Computer wins\./ }),
+        ).toBeDefined();
+      },
+      { timeout: 20_000, interval: 5 },
+    );
+  }
+
+  const wins = (storage: Storage): number => {
+    const record = loadRecord(storage);
+    return record.you.wins + record.computer.wins;
+  };
+
+  it('counts a finished Game once, shows it, and leaves an abandoned Game out', async () => {
+    const storage = memoryStorage();
+    const first = render(
+      <App
+        seed={1}
+        startingScores={[115, 115]}
+        pace={0}
+        storage={storage}
+        confirmNewGame={() => true}
+        confirmResetRecord={() => true}
+      />,
+    );
+    await playToTheEnd();
+    expect(wins(storage)).toBe(1);
+    expect(screen.getByLabelText('Record').textContent).toMatch(
+      /^(You lead|Computer leads) 1 game to 0/,
+    );
+    // A reload lands back on the result screen without counting it twice.
+    first.unmount();
+    render(
+      <App seed={1} pace={0} storage={storage} confirmNewGame={() => true} />,
+    );
+    await screen.findByRole('heading', { name: /You win!|Computer wins\./ });
+    expect(wins(storage)).toBe(1);
+    // Starting the next Game, then abandoning it, leaves the Record alone.
+    const [newGame] = screen.getAllByRole('button', { name: 'New game' });
+    if (newGame === undefined) throw new Error('no New game button');
+    fireEvent.click(newGame);
+    await screen.findByRole('button', { name: 'Send to crib' });
+    fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+    await screen.findByRole('button', { name: 'Send to crib' });
+    expect(wins(storage)).toBe(1);
+  }, 30_000);
+
+  it('resets the Record when asked and confirmed', async () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      'cribbage.record',
+      JSON.stringify({
+        version: 1,
+        you: { wins: 2, skunks: 0, doubleSkunks: 0 },
+        computer: { wins: 0, skunks: 0, doubleSkunks: 0 },
+        lastGame: '5:30',
+      }),
+    );
+    let asked = 0;
+    render(
+      <App
+        seed={1}
+        startingScores={[115, 115]}
+        pace={0}
+        storage={storage}
+        confirmNewGame={() => true}
+        confirmResetRecord={() => {
+          asked++;
+          return asked > 1;
+        }}
+      />,
+    );
+    await playToTheEnd();
+    expect(screen.getByLabelText('Record').textContent).toMatch(
+      /^(You lead 3 games to 0|You lead 2 games to 1)/,
+    );
+    expect(
+      loadRecord(storage).you.wins + loadRecord(storage).computer.wins,
+    ).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset record' }));
+    expect(loadRecord(storage).you.wins).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset record' }));
+    const cleared = loadRecord(storage);
+    expect(cleared.you.wins + cleared.computer.wins).toBe(0);
+    expect(screen.getByLabelText('Record').textContent).toBe(
+      'No Games finished yet',
+    );
+    // The Game on screen stays uncounted after the reset.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(
+      loadRecord(storage).you.wins + loadRecord(storage).computer.wins,
+    ).toBe(0);
+  }, 30_000);
 });
