@@ -1,4 +1,5 @@
 import { cardValue, JACK, type Card, type Rank } from './cards';
+import { isRun, pairOf } from './combinations';
 import { makeTally, type Combination, type Tally } from './tally';
 
 export type ShowInput = {
@@ -40,29 +41,15 @@ function fifteens(cards: readonly Card[]): Combination[] {
     .map((s) => ({ kind: 'fifteen', points: 2, cards: s }));
 }
 
-/** Two of a rank is a Pair, three a Pair Royal, four a Double Pair Royal. */
 function pairs(cards: readonly Card[]): Combination[] {
   const byRank = new Map<Rank, Card[]>();
   for (const card of cards) {
     byRank.set(card.rank, [...(byRank.get(card.rank) ?? []), card]);
   }
-  const result: Combination[] = [];
-  for (const group of byRank.values()) {
-    if (group.length === 2) {
-      result.push({ kind: 'pair', points: 2, cards: group });
-    } else if (group.length === 3) {
-      result.push({ kind: 'pair-royal', points: 6, cards: group });
-    } else if (group.length === 4) {
-      result.push({ kind: 'double-pair-royal', points: 12, cards: group });
-    }
-  }
-  return result;
-}
-
-function isRun(cards: readonly Card[]): boolean {
-  if (cards.length < 3) return false;
-  const ranks = cards.map((c) => c.rank).sort((a, b) => a - b);
-  return ranks.every((rank, i) => i === 0 || rank === (ranks[i - 1] ?? 0) + 1);
+  return [...byRank.values()].flatMap((group) => {
+    const pair = pairOf(group);
+    return pair === undefined ? [] : [pair];
+  });
 }
 
 /**

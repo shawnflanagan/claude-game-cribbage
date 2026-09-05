@@ -143,23 +143,58 @@ describe('Pegging: Combinations', () => {
   });
 
   it('scores only the longest Run ending in the played card', () => {
-    const { events } = play(start('5H 7H AH 3H', '6S 2S 4S AS'), [
+    const { events } = play(start('5H 7H AH 2H', '6S 8S 4S AS'), [
       [0, '5H'],
       [1, '6S'],
       [0, '7H'],
+      [1, '8S'],
+    ]);
+    // 5 6 7 is a run of three; 5 6 7 8 is one run of four, not also 6 7 8.
+    expect(tallies(events, 0).map((c) => c.points)).toEqual([3]);
+    expect(tallies(events, 1).map((c) => c.points)).toEqual([4]);
+    expect(kinds(events, 1)).toEqual(['run']);
+  });
+
+  it('scores a Run of five', () => {
+    const { events } = play(start('2H 4H 6H 8H', '3S 5S 7S 9S'), [
+      [0, '2H'],
+      [1, '3S'],
+      [0, '4H'],
+      [1, '5S'],
+      [0, '6H'],
+    ]);
+    expect(tallies(events, 0).map((c) => c.points)).toEqual([3, 5]);
+    expect(tallies(events, 1).map((c) => c.points)).toEqual([4]);
+  });
+
+  it('does not let a Pair or Run reach back across a Count reset', () => {
+    const { events } = play(start('TH JH AH 2H', 'KS AS 2S 3S'), [
+      [0, 'TH'],
+      [1, 'KS'],
+      [0, 'JH'],
+      [1, 'AS'],
+      [0, 'AH'],
       [1, '2S'],
     ]);
-    // 5 6 7 is a run of three for Seat 0; 5 6 7 2 is not a run.
-    expect(kinds(events, 0)).toEqual(['run']);
-    expect(kinds(events, 1)).toEqual([]);
+    // AS made Thirty-One and reset the Count; AH and 2S start a new sequence.
+    expect(kinds(events, 0)).toEqual([]);
+    expect(kinds(events, 1)).toEqual(['thirty-one']);
+  });
+
+  it('names every card in the sequence for a Fifteen', () => {
+    const { events } = play(start('7H 2H 3H 4H', '8S 2S 3S 4S'), [
+      [0, '7H'],
+      [1, '8S'],
+    ]);
+    expect(tallies(events, 1)[0]?.cards).toEqual(parseCards('7H 8S'));
   });
 
   it('does not score a Run broken by an intervening card', () => {
-    const { events } = play(start('4H 5H 2H 3H', '6S KS QS JS'), [
+    const { events } = play(start('4H KH 2H 3H', '5S 6S QS JS'), [
       [0, '4H'],
+      [1, '5S'],
+      [0, 'KH'],
       [1, '6S'],
-      [0, '2H'],
-      [1, 'KS'],
     ]);
     expect(kinds(events, 0)).toEqual([]);
     expect(kinds(events, 1)).toEqual([]);
@@ -190,7 +225,7 @@ describe('Pegging: Combinations', () => {
 });
 
 describe('Pegging: Go and sequence ends', () => {
-  it('after a Go, the other Seat plays on and takes Last Card, and the Seat that went leads next', () => {
+  it('after a Go, Last Card goes to the Seat that played last and the Seat that went leads next', () => {
     const { state, events } = play(start('TH JH', 'KS 9S 2S'), [
       [0, 'TH'],
       [1, 'KS'],
@@ -201,8 +236,48 @@ describe('Pegging: Go and sequence ends', () => {
     ]);
     expect(kinds(events, 0)).toEqual(['last-card']);
     expect(tallies(events, 0).map((c) => c.points)).toEqual([1]);
+    expect(events.at(-1)).toEqual({ type: 'sequence-ended', leader: 1 });
     expect(state.count).toBe(0);
     expect(state.turn).toBe(1);
+  });
+
+  it('after a Go, the other Seat plays on while it can, and the Go is said only once', () => {
+    const { state, events } = play(start('TH 9H JH AH', 'KS 8S 7S 6S'), [
+      [0, 'TH'],
+      [1, 'KS'],
+      [0, '9H'],
+      [0, 'AH'],
+    ]);
+    expect(events.filter((e) => e.type === 'go')).toEqual([
+      { type: 'go', seat: 1 },
+    ]);
+    expect(kinds(events, 0)).toEqual(['last-card']);
+    expect(state.count).toBe(0);
+    expect(state.turn).toBe(1);
+  });
+
+  it('when neither Seat can play and both hold cards, only the first is asked to say Go', () => {
+    const { state, events } = play(start('TH JH 9H', 'KS QS 8S'), [
+      [0, 'TH'],
+      [1, 'KS'],
+      [0, 'JH'],
+    ]);
+    expect(events.filter((e) => e.type === 'go')).toEqual([
+      { type: 'go', seat: 1 },
+    ]);
+    expect(kinds(events, 0)).toEqual(['last-card']);
+    expect(state.count).toBe(0);
+    expect(state.turn).toBe(1);
+  });
+
+  it('lets Seat 1 lead when it is the Pone', () => {
+    const state = start('7H 8H 9H TH', 'AS 2S 3S 4S', 1);
+    expect(state.turn).toBe(1);
+    expect(playCard(state, 0, parseCard('7H'))).toEqual({
+      ok: false,
+      violation: 'not-your-turn',
+    });
+    expect(play(state, [[1, 'AS']]).state.count).toBe(1);
   });
 
   it('after a Go, the other Seat may keep playing until it reaches exactly 31', () => {
@@ -222,7 +297,7 @@ describe('Pegging: Go and sequence ends', () => {
     expect(state.count).toBe(0);
   });
 
-  it('when both Seats are at Go under 31, the last player scores one and the other leads', () => {
+  it('when the last Seat to play is out of cards and the other is at Go, Last Card scores one and the other leads', () => {
     const { state, events } = play(start('TH JH', 'KS QS'), [
       [0, 'TH'],
       [1, 'KS'],

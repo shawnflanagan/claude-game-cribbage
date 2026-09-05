@@ -1,5 +1,6 @@
 import { cardValue, sameCard, type Card } from './cards';
-import { otherSeat, type Seat } from './seat';
+import { isRun, pairOf } from './combinations';
+import { otherSeat, withSeat, type PerSeat, type Seat } from './seat';
 import { makeTally, type Combination, type Tally } from './tally';
 import type { Violation } from './violation';
 
@@ -12,14 +13,14 @@ export type PlayedCard = {
 
 export type PeggingState = {
   /** Cards each Seat still holds. */
-  readonly hands: readonly [readonly Card[], readonly Card[]];
+  readonly hands: PerSeat<readonly Card[]>;
   /** Cards played since the Count last reset, in order. */
   readonly sequence: readonly PlayedCard[];
   readonly count: number;
   /** The Seat expected to play next. Meaningless once `done`. */
   readonly turn: Seat;
   /** Whether each Seat has already said Go in this sequence. */
-  readonly atGo: readonly [boolean, boolean];
+  readonly atGo: PerSeat<boolean>;
   readonly done: boolean;
 };
 
@@ -34,8 +35,10 @@ export type PlayResult =
   | { ok: true; state: PeggingState; events: readonly PeggingEvent[] }
   | { ok: false; violation: Violation };
 
+type Step = { state: PeggingState; events: readonly PeggingEvent[] };
+
 export function startPegging(
-  hands: readonly [readonly Card[], readonly Card[]],
+  hands: PerSeat<readonly Card[]>,
   leader: Seat,
 ): PeggingState {
   return {
@@ -74,91 +77,73 @@ export function playCard(
   if (count > MAX_COUNT) return refuse('count-would-exceed-31');
 
   const sequence = [...state.sequence, { seat, card }];
+  const remaining = state.hands[seat].filter((c) => !sameCard(c, card));
   const played: PeggingState = {
     ...state,
-    hands: withoutCard(state.hands, seat, card),
+    hands: withSeat(state.hands, seat, remaining),
     sequence,
     count,
   };
-  const events: PeggingEvent[] = [{ type: 'card-played', seat, card, count }];
   const tally = scorePlay(sequence, count);
+  const events: PeggingEvent[] = [{ type: 'card-played', seat, card, count }];
   if (tally.total > 0) events.push({ type: 'tally', seat, tally });
-  return advance(played, seat, events);
+  const next = advance(played, seat);
+  return { ok: true, state: next.state, events: [...events, ...next.events] };
 }
 
 function refuse(violation: Violation): PlayResult {
   return { ok: false, violation };
 }
 
-function withoutCard(
-  hands: PeggingState['hands'],
-  seat: Seat,
-  card: Card,
-): PeggingState['hands'] {
-  const remaining = hands[seat].filter((c) => !sameCard(c, card));
-  return seat === 0 ? [remaining, hands[1]] : [hands[0], remaining];
-}
-
-/** Decides who acts next after `lastPlayer` played, or ends the sequence. */
-function advance(
-  state: PeggingState,
-  lastPlayer: Seat,
-  events: PeggingEvent[],
-): PlayResult {
-  if (state.count === MAX_COUNT) {
-    return endSequence(state, lastPlayer, events, false);
+/** Decides who acts next after `lastSeat` played, or ends the sequence. */
+function advance(state: PeggingState, lastSeat: Seat): Step {
+  if (state.count === MAX_COUNT) return endSequence(state, lastSeat);
+  const other = otherSeat(lastSeat);
+  if (legalCards(state, other).length > 0) {
+    return { state: { ...state, turn: other }, events: [] };
   }
-  const opponent = otherSeat(lastPlayer);
-  if (legalCards(state, opponent).length > 0) {
-    return { ok: true, state: { ...state, turn: opponent }, events };
+  // The other Seat is at Go, said once per sequence, and only if it holds
+  // cards at all: a Seat that has played out says nothing.
+  const says = state.hands[other].length > 0 && !state.atGo[other];
+  const marked = says
+    ? { ...state, atGo: withSeat(state.atGo, other, true) }
+    : state;
+  const events: PeggingEvent[] = says ? [{ type: 'go', seat: other }] : [];
+  if (legalCards(marked, lastSeat).length > 0) {
+    return { state: { ...marked, turn: lastSeat }, events };
   }
-  let next = state;
-  if (state.hands[opponent].length > 0 && !state.atGo[opponent]) {
-    events.push({ type: 'go', seat: opponent });
-    next = { ...state, atGo: withGo(state.atGo, opponent) };
-  }
-  if (legalCards(next, lastPlayer).length > 0) {
-    return { ok: true, state: { ...next, turn: lastPlayer }, events };
-  }
-  return endSequence(next, lastPlayer, events, true);
-}
-
-function withGo(atGo: PeggingState['atGo'], seat: Seat): PeggingState['atGo'] {
-  return seat === 0 ? [true, atGo[1]] : [atGo[0], true];
+  const ended = endSequence(marked, lastSeat);
+  return { state: ended.state, events: [...events, ...ended.events] };
 }
 
 /**
  * Ends the current sequence: Last Card to whoever played last unless they
  * made Thirty-One, then either the next leader takes over or Pegging ends.
  */
-function endSequence(
-  state: PeggingState,
-  lastPlayer: Seat,
-  events: PeggingEvent[],
-  awardLastCard: boolean,
-): PlayResult {
+function endSequence(state: PeggingState, lastSeat: Seat): Step {
+  const events: PeggingEvent[] = [];
   const lastCard = state.sequence.at(-1)?.card;
-  if (awardLastCard && lastCard !== undefined) {
+  if (state.count !== MAX_COUNT && lastCard !== undefined) {
     events.push({
       type: 'tally',
-      seat: lastPlayer,
+      seat: lastSeat,
       tally: makeTally([{ kind: 'last-card', points: 1, cards: [lastCard] }]),
     });
   }
-  const reset = {
+  const reset: PeggingState = {
     ...state,
     sequence: [],
     count: 0,
-    atGo: [false, false] as const,
+    atGo: [false, false],
   };
   if (state.hands[0].length + state.hands[1].length === 0) {
     events.push({ type: 'pegging-ended' });
-    return { ok: true, state: { ...reset, done: true }, events };
+    return { state: { ...reset, done: true }, events };
   }
-  const opponent = otherSeat(lastPlayer);
-  const leader = state.hands[opponent].length > 0 ? opponent : lastPlayer;
+  const other = otherSeat(lastSeat);
+  const leader = state.hands[other].length > 0 ? other : lastSeat;
   events.push({ type: 'sequence-ended', leader });
-  return { ok: true, state: { ...reset, turn: leader }, events };
+  return { state: { ...reset, turn: leader }, events };
 }
 
 /** The Combinations the newest card in the sequence makes. */
@@ -181,22 +166,15 @@ function pairAtEnd(cards: readonly Card[]): Combination[] {
   for (let i = cards.length - 1; i >= 0 && cards[i]?.rank === last.rank; i--) {
     n++;
   }
-  const tail = cards.slice(cards.length - n);
-  if (n === 2) return [{ kind: 'pair', points: 2, cards: tail }];
-  if (n === 3) return [{ kind: 'pair-royal', points: 6, cards: tail }];
-  if (n === 4) return [{ kind: 'double-pair-royal', points: 12, cards: tail }];
-  return [];
+  const pair = pairOf(cards.slice(cards.length - n));
+  return pair === undefined ? [] : [pair];
 }
 
 /** The longest Run formed by the cards ending the sequence, in any order. */
 function runAtEnd(cards: readonly Card[]): Combination[] {
   for (let length = cards.length; length >= 3; length--) {
     const tail = cards.slice(cards.length - length);
-    const ranks = tail.map((c) => c.rank).sort((a, b) => a - b);
-    const consecutive = ranks.every(
-      (rank, i) => i === 0 || rank === (ranks[i - 1] ?? 0) + 1,
-    );
-    if (consecutive) return [{ kind: 'run', points: length, cards: tail }];
+    if (isRun(tail)) return [{ kind: 'run', points: length, cards: tail }];
   }
   return [];
 }
