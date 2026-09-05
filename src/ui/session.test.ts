@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seatsToAct, viewFor, type Action } from '../engine';
-import { randomOpponent } from '../opponent';
+import { heuristicOpponent, randomOpponent } from '../opponent';
 import {
   caughtUp,
   computerAct,
@@ -228,5 +228,18 @@ describe('session: engine ahead, presentation behind', () => {
     const model = present(revealAll(session));
     expect(model.stage).toBe('over');
     expect(model.result).toEqual(session.engine.result);
+  });
+
+  it('records each accepted Action in order', () => {
+    const start = startSession(16);
+    expect(start.actions).toEqual([]);
+    const [a, b] = viewFor(start.engine, HUMAN).hand;
+    if (a === undefined || b === undefined) throw new Error('short hand');
+    const action: Action = { type: 'discard', seat: HUMAN, cards: [a, b] };
+    const after = humanAct(start, action);
+    expect(after.actions).toEqual([action]);
+    const withComputer = computerAct(after, heuristicOpponent);
+    expect(withComputer?.actions).toHaveLength(2);
+    expect(withComputer?.actions[1]?.seat).toBe(1);
   });
 });

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cardValue, fullDeck, parseCard, parseCards, sameCard } from './cards';
+import {
+  cardValue,
+  fullDeck,
+  parseCard,
+  parseCards,
+  sameCard,
+  isCard,
+} from './cards';
 
 describe('cards', () => {
   it('parses rank and suit from short notation', () => {
@@ -38,6 +45,15 @@ describe('cards', () => {
     expect(deck).toHaveLength(52);
     const distinct = new Set(deck.map((c) => `${String(c.rank)}${c.suit}`));
     expect(distinct.size).toBe(52);
+  });
+
+  it('recognises a well-formed card and rejects anything else', () => {
+    expect(isCard({ rank: 5, suit: 'hearts' })).toBe(true);
+    expect(isCard({ rank: 14, suit: 'hearts' })).toBe(false);
+    expect(isCard({ rank: 5, suit: 'stars' })).toBe(false);
+    expect(isCard({ rank: '5', suit: 'hearts' })).toBe(false);
+    expect(isCard(null)).toBe(false);
+    expect(isCard('5H')).toBe(false);
   });
 
   it('compares cards by rank and suit, not identity', () => {

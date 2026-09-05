@@ -12,7 +12,7 @@ import {
   type Pause,
   type Session,
 } from './session';
-import { clearSaved, loadSaved, saveGame } from './storage';
+import { clearGame, loadGame, saveGame } from './storage';
 
 type Command =
   | { type: 'human'; action: Action }
@@ -61,20 +61,16 @@ export function useGame(
   const [session, dispatch] = useReducer(
     reduce,
     null,
-    () => (storage === null ? null : loadSaved(storage)) ?? startSession(seed),
+    () => (storage === null ? null : loadGame(storage)) ?? startSession(seed),
   );
   const pause = nextPause(session);
 
-  // Save after every decision of the human's; a Game they have not yet
-  // touched is not worth keeping, so New game leaves nothing behind.
-  const decisions = session.actions.filter(
-    (a) => a.seat === session.human,
-  ).length;
+  // Save after every accepted Action, whichever Seat took it. The Action
+  // list is a new array only when one lands, so reveals do not rewrite.
+  const { actions } = session;
   useEffect(() => {
-    if (storage === null) return;
-    if (decisions === 0) clearSaved(storage);
-    else saveGame(storage, session);
-  }, [storage, decisions, session]);
+    if (storage !== null && actions.length > 0) saveGame(storage, session);
+  }, [storage, actions]);
 
   useEffect(() => {
     if (computerToAct(session)) dispatch({ type: 'computer', opponent });
@@ -107,6 +103,7 @@ export function useGame(
       dispatch({ type: 'reveal' });
     },
     newGame: (next) => {
+      if (storage !== null) clearGame(storage);
       dispatch({ type: 'new-game', seed: next });
     },
   };

@@ -18,6 +18,13 @@ export function cardValue(card: Card): number {
   return Math.min(card.rank, 10);
 }
 
+/** Whether an unknown value (say, from storage) is a well-formed Card. */
+export function isCard(value: unknown): value is Card {
+  if (typeof value !== 'object' || value === null) return false;
+  const { rank, suit } = value as { rank?: unknown; suit?: unknown };
+  return RANKS.some((r) => r === rank) && SUITS.some((s) => s === suit);
+}
+
 export function sameCard(a: Card, b: Card): boolean {
   return a.rank === b.rank && a.suit === b.suit;
 }

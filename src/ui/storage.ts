@@ -1,4 +1,4 @@
-import { replay, type Action, type Card, type Seat } from '../engine';
+import { createRng, isCard, replay, type Action, type Seat } from '../engine';
 import type { Session } from './session';
 
 export const STORAGE_KEY = 'cribbage.game';
@@ -42,7 +42,7 @@ export function restore(saved: unknown): Session | null {
     events: replayed.events,
     actions: saved.actions,
     revealed: replayed.events.length,
-    opponentRng: { state: saved.opponentRng },
+    opponentRng: createRng(saved.opponentRng),
   };
 }
 
@@ -54,7 +54,7 @@ export function saveGame(storage: Storage, session: Session): void {
   }
 }
 
-export function loadSaved(storage: Storage): Session | null {
+export function loadGame(storage: Storage): Session | null {
   try {
     const raw = storage.getItem(STORAGE_KEY);
     return raw === null ? null : restore(JSON.parse(raw));
@@ -63,7 +63,7 @@ export function loadSaved(storage: Storage): Session | null {
   }
 }
 
-export function clearSaved(storage: Storage): void {
+export function clearGame(storage: Storage): void {
   try {
     storage.removeItem(STORAGE_KEY);
   } catch {
@@ -71,26 +71,12 @@ export function clearSaved(storage: Storage): void {
   }
 }
 
-const SUITS: readonly string[] = ['clubs', 'diamonds', 'hearts', 'spades'];
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 function isSeat(value: unknown): value is Seat {
   return value === 0 || value === 1;
-}
-
-function isCard(value: unknown): value is Card {
-  return (
-    isRecord(value) &&
-    typeof value.rank === 'number' &&
-    Number.isInteger(value.rank) &&
-    value.rank >= 1 &&
-    value.rank <= 13 &&
-    typeof value.suit === 'string' &&
-    SUITS.includes(value.suit)
-  );
 }
 
 function isAction(value: unknown): value is Action {
@@ -106,9 +92,9 @@ function isSavedGame(value: unknown): value is SavedGame {
   return (
     isRecord(value) &&
     value.version === 1 &&
-    typeof value.seed === 'number' &&
+    Number.isInteger(value.seed) &&
     isSeat(value.human) &&
-    typeof value.opponentRng === 'number' &&
+    Number.isInteger(value.opponentRng) &&
     Array.isArray(value.actions) &&
     value.actions.every(isAction)
   );

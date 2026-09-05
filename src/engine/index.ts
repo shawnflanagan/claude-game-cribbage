@@ -1,6 +1,13 @@
 // The pure cribbage engine. Framework-free, deterministic, no I/O.
 // See docs/adr/0001-pure-engine-ui-as-thin-consumer.md and CONTEXT.md.
-export { cardValue, fullDeck, parseCard, parseCards, sameCard } from './cards';
+export {
+  cardValue,
+  fullDeck,
+  isCard,
+  parseCard,
+  parseCards,
+  sameCard,
+} from './cards';
 export type { Card, Rank, Suit } from './cards';
 export {
   DISCARD_SIZE,

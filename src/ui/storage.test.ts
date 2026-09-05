@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { viewFor, type Action } from '../engine';
-import { heuristicOpponent } from '../opponent';
+import { viewFor } from '../engine';
+import { heuristicOpponent, randomOpponent } from '../opponent';
+import { describeEvent } from './log';
+import { memoryStorage } from './memoryStorage';
 import { computerAct, humanAct, startSession, type Session } from './session';
 import {
-  clearSaved,
-  loadSaved,
+  clearGame,
+  loadGame,
   restore,
   saveGame,
   serialize,
@@ -12,26 +14,6 @@ import {
 } from './storage';
 
 const HUMAN = 0;
-
-function memoryStorage(): Storage {
-  const map = new Map<string, string>();
-  return {
-    get length() {
-      return map.size;
-    },
-    clear: () => {
-      map.clear();
-    },
-    getItem: (k) => map.get(k) ?? null,
-    key: (i) => [...map.keys()][i] ?? null,
-    removeItem: (k) => {
-      map.delete(k);
-    },
-    setItem: (k, v) => {
-      map.set(k, v);
-    },
-  };
-}
 
 function afterSomePlay(seed: number): Session {
   let session = startSession(seed);
@@ -74,6 +56,39 @@ describe('saving a Game', () => {
     expect(restored.actions).toEqual(session.actions);
     expect(restored.opponentRng).toEqual(session.opponentRng);
     expect(restored.revealed).toBe(session.events.length);
+    const lines = (s: Session) =>
+      s.events.map((e) => describeEvent(e, HUMAN)).filter((l) => l !== null);
+    expect(lines(restored)).toEqual(lines(session));
+  });
+
+  it('resumes a random opponent exactly where its randomness left off', () => {
+    let session = startSession(17);
+    const [a, b] = viewFor(session.engine, HUMAN).hand;
+    if (a === undefined || b === undefined) throw new Error('short hand');
+    session = humanAct(session, {
+      type: 'discard',
+      seat: HUMAN,
+      cards: [a, b],
+    });
+    session = computerAct(session, randomOpponent) ?? session;
+    const restored = restore(JSON.parse(JSON.stringify(serialize(session))));
+    if (restored === null) throw new Error('did not restore');
+    // Drive both to the Computer's next decision and compare it.
+    const next = (s: Session) => {
+      let current = s;
+      while (
+        !viewFor(current.engine, 1).pegging ||
+        current.engine.pegging?.turn !== 1
+      ) {
+        const view = viewFor(current.engine, HUMAN);
+        const card = view.pegging?.legal[0];
+        if (card === undefined) throw new Error('human cannot move');
+        current = humanAct(current, { type: 'play', seat: HUMAN, card });
+        if (current.engine.pegging?.turn === 1) break;
+      }
+      return computerAct(current, randomOpponent)?.actions.at(-1);
+    };
+    expect(next(restored)).toEqual(next(session));
   });
 
   it('survives a trip through JSON', () => {
@@ -140,15 +155,15 @@ describe('the browser store', () => {
     const storage = memoryStorage();
     const session = afterSomePlay(14);
     saveGame(storage, session);
-    expect(loadSaved(storage)?.engine).toEqual(session.engine);
-    clearSaved(storage);
-    expect(loadSaved(storage)).toBeNull();
+    expect(loadGame(storage)?.engine).toEqual(session.engine);
+    clearGame(storage);
+    expect(loadGame(storage)).toBeNull();
   });
 
   it('returns nothing for an unreadable save', () => {
     const storage = memoryStorage();
     storage.setItem('cribbage.game', '{not json');
-    expect(loadSaved(storage)).toBeNull();
+    expect(loadGame(storage)).toBeNull();
   });
 
   it('keeps playing when storage throws', () => {
@@ -171,25 +186,9 @@ describe('the browser store', () => {
     expect(() => {
       saveGame(broken, afterSomePlay(15));
     }).not.toThrow();
-    expect(loadSaved(broken)).toBeNull();
+    expect(loadGame(broken)).toBeNull();
     expect(() => {
-      clearSaved(broken);
+      clearGame(broken);
     }).not.toThrow();
-  });
-});
-
-describe('the session records its Actions', () => {
-  it('appends each accepted Action in order', () => {
-    const start = startSession(16);
-    expect(start.actions).toEqual([]);
-    const view = viewFor(start.engine, HUMAN);
-    const [a, b] = view.hand;
-    if (a === undefined || b === undefined) throw new Error('short hand');
-    const action: Action = { type: 'discard', seat: HUMAN, cards: [a, b] };
-    const after = humanAct(start, action);
-    expect(after.actions).toEqual([action]);
-    const withComputer = computerAct(after, heuristicOpponent);
-    expect(withComputer?.actions).toHaveLength(2);
-    expect(withComputer?.actions[1]?.seat).toBe(1);
   });
 });

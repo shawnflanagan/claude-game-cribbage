@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
+import { memoryStorage } from './memoryStorage';
 
 const cardButtons = (region: HTMLElement) =>
   within(region).getAllByRole('button', { name: / of / });
@@ -86,26 +87,6 @@ describe('App', () => {
 });
 
 describe('App with a saved Game', () => {
-  function memoryStorage(): Storage {
-    const map = new Map<string, string>();
-    return {
-      get length() {
-        return map.size;
-      },
-      clear: () => {
-        map.clear();
-      },
-      getItem: (k) => map.get(k) ?? null,
-      key: (i) => [...map.keys()][i] ?? null,
-      removeItem: (k) => {
-        map.delete(k);
-      },
-      setItem: (k, v) => {
-        map.set(k, v);
-      },
-    };
-  }
-
   it('comes back where it left off after a reload, and forgets the Game on New game', async () => {
     const storage = memoryStorage();
     const first = render(<App seed={1} pace={0} storage={storage} />);
@@ -124,12 +105,15 @@ describe('App with a saved Game', () => {
       expect(screen.getByText(/Count/)).toBeDefined();
     });
     const logBefore = screen.getByRole('list').textContent;
+    const countBefore = screen.getByText(/Count/).textContent;
+    const scoresBefore = screen.getByLabelText('Scores').textContent;
     first.unmount();
 
     render(
       <App seed={999} pace={0} storage={storage} confirmNewGame={() => true} />,
     );
-    expect(screen.getByText(/Count/)).toBeDefined();
+    expect(screen.getByText(/Count/).textContent).toBe(countBefore);
+    expect(screen.getByLabelText('Scores').textContent).toBe(scoresBefore);
     expect(screen.getByRole('list').textContent).toBe(logBefore);
     expect(
       screen.getByRole('region', { name: 'You' }).querySelectorAll('.card'),
@@ -137,7 +121,10 @@ describe('App with a saved Game', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'New game' }));
     await waitFor(() => {
-      expect(storage.getItem('cribbage.game')).toBeNull();
+      const raw = storage.getItem('cribbage.game');
+      // The old Game is gone; whatever is saved now is the new one.
+      const saved = raw === null ? null : (JSON.parse(raw) as { seed: number });
+      expect(saved?.seed).not.toBe(1);
     });
   });
 });
