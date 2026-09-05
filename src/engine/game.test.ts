@@ -155,7 +155,7 @@ describe('Game: Discard, Starter, and Heels', () => {
     expect(result.state.phase).toBe('discard');
     expect(result.state.hands[1]).toHaveLength(4);
     expect(result.state.crib).toEqual(cards);
-    expect(result.events).toEqual([{ type: 'discarded', seat: 1 }]);
+    expect(result.events).toEqual([{ type: 'discarded', seat: 1, cards }]);
   });
 
   it('cuts the Starter and starts Pegging once both have discarded', () => {
@@ -243,6 +243,9 @@ describe('Game: the Show and the next Round', () => {
     expect(state.crib).toHaveLength(0);
     expect(state.starter).toBeNull();
     expect(types(events).slice(-2)).toEqual(['round-ended', 'dealt']);
+    const dealt = events.at(-1);
+    if (dealt?.type !== 'dealt') throw new Error('no deal');
+    expect(dealt.hands).toEqual(state.hands);
   });
 });
 

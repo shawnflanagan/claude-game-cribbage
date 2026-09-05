@@ -64,13 +64,26 @@ export type ShowCounted = {
   tally: Tally;
 };
 
+/**
+ * Everything that happens in a Game, in order. Events are the whole truth,
+ * including both Hands and both Discards: a consumer that must not see the
+ * other Seat's cards (a future networked client) filters them per Seat, the
+ * way `viewFor` filters state. The opponent never receives Events.
+ */
 export type GameEvent =
   | { type: 'cut-for-deal'; cuts: PerSeat<Card>; dealer: Seat | null }
-  | { type: 'dealt'; dealer: Seat; round: number }
-  | { type: 'discarded'; seat: Seat }
+  | {
+      type: 'dealt';
+      dealer: Seat;
+      round: number;
+      hands: PerSeat<readonly Card[]>;
+    }
+  | { type: 'discarded'; seat: Seat; cards: readonly Card[] }
   | { type: 'starter-cut'; card: Card }
   | { type: 'heels'; seat: Seat; tally: Tally }
   | ShowCounted
+  /** Follows every Event that carries a Tally, with the scores after it. */
+  | { type: 'scored'; seat: Seat; points: number; scores: PerSeat<number> }
   | { type: 'round-ended'; round: number }
   | { type: 'game-won'; result: GameResult }
   | PeggingEvent;
@@ -212,7 +225,7 @@ function applyDiscard(
     crib: [...state.crib, ...cards],
   };
   const bothDone = discarded.hands.every((h) => h.length === KEPT_SIZE);
-  const step = then(emit(discarded, { type: 'discarded', seat }), (s) =>
+  const step = then(emit(discarded, { type: 'discarded', seat, cards }), (s) =>
     bothDone ? cutStarter(s) : emit(s),
   );
   return { ok: true, ...step };
@@ -261,7 +274,7 @@ function deal(state: GameState, dealer: Seat): Step {
       deck: deck.slice(HAND_SIZE * 2),
       pegging: null,
     },
-    { type: 'dealt', dealer, round },
+    { type: 'dealt', dealer, round, hands },
   );
 }
 
@@ -326,12 +339,13 @@ function score(state: GameState, seat: Seat, points: number): Step {
   if (points === 0) return emit(state);
   const total = Math.min(WINNING_SCORE, state.scores[seat] + points);
   const scores = withSeat(state.scores, seat, total);
-  if (total < WINNING_SCORE) return emit({ ...state, scores });
+  const scored: GameEvent = { type: 'scored', seat, points, scores };
+  if (total < WINNING_SCORE) return emit({ ...state, scores }, scored);
   const result = gameResult(seat, scores);
-  return emit(
-    { ...state, scores, phase: 'game-over', result },
-    { type: 'game-won', result },
-  );
+  return emit({ ...state, scores, phase: 'game-over', result }, scored, {
+    type: 'game-won',
+    result,
+  });
 }
 
 /**

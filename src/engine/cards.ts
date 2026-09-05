@@ -64,3 +64,38 @@ export function parseCard(text: string): Card {
 export function parseCards(text: string): Card[] {
   return text.trim().split(/\s+/).map(parseCard);
 }
+
+const RANK_LABELS = [
+  'A',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '10',
+  'J',
+  'Q',
+  'K',
+];
+const SUIT_GLYPHS: Readonly<Record<Suit, string>> = {
+  clubs: '\u2663',
+  diamonds: '\u2666',
+  hearts: '\u2665',
+  spades: '\u2660',
+};
+
+/** The card as people write it: '7\u2660', '10\u2665', 'J\u2666'. */
+export function formatCard(card: Card): string {
+  return `${RANK_LABELS[card.rank - 1] ?? '?'}${SUIT_GLYPHS[card.suit]}`;
+}
+
+export function suitGlyph(suit: Suit): string {
+  return SUIT_GLYPHS[suit];
+}
+
+export function rankLabel(rank: Rank): string {
+  return RANK_LABELS[rank - 1] ?? '?';
+}

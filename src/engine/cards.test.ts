@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cardValue, fullDeck, parseCard, parseCards, sameCard } from './cards';
+import {
+  cardValue,
+  formatCard,
+  fullDeck,
+  parseCard,
+  parseCards,
+  sameCard,
+} from './cards';
 
 describe('cards', () => {
   it('parses rank and suit from short notation', () => {
@@ -38,6 +45,13 @@ describe('cards', () => {
     expect(deck).toHaveLength(52);
     const distinct = new Set(deck.map((c) => `${String(c.rank)}${c.suit}`));
     expect(distinct.size).toBe(52);
+  });
+
+  it('formats a card the way people write it', () => {
+    expect(formatCard(parseCard('7S'))).toBe('7\u2660');
+    expect(formatCard(parseCard('TH'))).toBe('10\u2665');
+    expect(formatCard(parseCard('AD'))).toBe('A\u2666');
+    expect(formatCard(parseCard('KC'))).toBe('K\u2663');
   });
 
   it('compares cards by rank and suit, not identity', () => {
