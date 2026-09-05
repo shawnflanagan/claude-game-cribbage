@@ -6,6 +6,14 @@ A browser game of two-player, six-card cribbage: a human against a computer oppo
 
 ### Roles
 
+**Seat**:
+One of the two symmetric positions at the table. A Seat may be driven by a human or by the computer opponent; the rules never distinguish.
+_Avoid_: player, side, slot
+
+**View**:
+What one Seat is allowed to know: the full state of the Game with the other Seat's Hand and the undealt deck hidden. The computer opponent decides from its View only.
+_Avoid_: perspective, partial state
+
 **Dealer**:
 The player who deals the round and owns the Crib. Counts last in the Show.
 _Avoid_: player 1, house
@@ -60,6 +68,35 @@ _Avoid_: match
 
 ### Scoring
 
+**Combination**:
+One scoring item: a kind and a point value. Show kinds are Fifteen, Pair, Pair Royal, Double Pair Royal, Run, Flush, and Nobs. Pegging kinds are Fifteen, Thirty-One, the Pair family, Run, and Last Card.
+_Avoid_: score, points, hit
+
+**Tally**:
+The full list of Combinations for one Hand, the Crib, or one Pegging play, with its total.
+_Avoid_: breakdown, score sheet, count
+
+**Fifteen**:
+Cards totalling exactly 15, for 2. In the Show, every distinct subset that sums to 15 counts.
+
+**Pair**:
+Two cards of the same rank, for 2. **Pair Royal** is three of a rank for 6; **Double Pair Royal** is four for 12.
+_Avoid_: trips, quads, three of a kind
+
+**Run**:
+Three or more cards of consecutive rank, 1 point per card. In Pegging the cards need not be played in order.
+_Avoid_: sequence, straight
+
+**Flush**:
+Four Hand cards of one suit, for 4; 5 if the Starter matches. The Crib scores a Flush only when all five match.
+
+**Thirty-One**:
+Bringing the Count to exactly 31 in Pegging, for 2. Ends the Pegging sequence.
+
+**Last Card**:
+The 1 point for playing the final card of a Pegging sequence that ends short of 31, whether by Go or by both players running out.
+_Avoid_: go point, one for last
+
 **Heels**:
 The 2 points the Dealer scores when the Starter is a Jack.
 _Avoid_: nibs, his heels
@@ -67,6 +104,10 @@ _Avoid_: nibs, his heels
 **Nobs**:
 The 1 point scored in the Show for holding the Jack of the Starter's suit.
 _Avoid_: his nobs, right Jack
+
+**Log**:
+The human-readable record of a Game, one line per thing that happened. Derived from the Game's history, never stored on its own.
+_Avoid_: history, transcript, feed
 
 **Skunk**:
 A win where the loser has fewer than 91 points. A **Double Skunk** is a win where the loser has fewer than 61.
