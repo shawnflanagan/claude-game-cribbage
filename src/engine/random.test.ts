@@ -12,8 +12,8 @@ describe('seeded randomness', () => {
   });
 
   it('produces different sequences from different seeds', () => {
-    const fromA = shuffle(fullDeck(), createRng(1)).items;
-    const fromB = shuffle(fullDeck(), createRng(2)).items;
+    const fromA = shuffle(fullDeck(), createRng(1)).value;
+    const fromB = shuffle(fullDeck(), createRng(2)).value;
     expect(fromA).not.toEqual(fromB);
   });
 
@@ -29,7 +29,7 @@ describe('seeded randomness', () => {
 
   it('shuffles into a permutation of the whole deck', () => {
     const deck = fullDeck();
-    const shuffled = shuffle(deck, createRng(99)).items;
+    const shuffled = shuffle(deck, createRng(99)).value;
     expect(shuffled).toHaveLength(52);
     for (const card of deck) {
       expect(shuffled.some((c) => sameCard(c, card))).toBe(true);
@@ -45,8 +45,8 @@ describe('seeded randomness', () => {
   });
 
   it('shuffling the same seed twice gives identical order', () => {
-    expect(shuffle(fullDeck(), createRng(2024)).items).toEqual(
-      shuffle(fullDeck(), createRng(2024)).items,
+    expect(shuffle(fullDeck(), createRng(2024)).value).toEqual(
+      shuffle(fullDeck(), createRng(2024)).value,
     );
   });
 });

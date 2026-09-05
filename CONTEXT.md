@@ -69,7 +69,7 @@ _Avoid_: match
 ### Scoring
 
 **Combination**:
-One scoring item: a kind and a point value. Show kinds are Fifteen, Pair, Pair Royal, Double Pair Royal, Run, Flush, and Nobs. Pegging kinds are Fifteen, Thirty-One, the Pair family, Run, and Last Card.
+One scoring item: a kind, a point value, and the cards that make it. Show kinds are Fifteen, Pair, Pair Royal, Double Pair Royal, Run, Flush, and Nobs. Pegging kinds are Fifteen, Thirty-One, the Pair family, Run, and Last Card.
 _Avoid_: score, points, hit
 
 **Tally**:

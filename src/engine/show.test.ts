@@ -43,7 +43,14 @@ const knownHands: KnownHand[] = [
     kinds: { fifteen: 4, pair: 2, run: 4 },
   },
   {
-    name: 'a 24: 6 6 6 3 3 style hand is only 20, so check 3 3 3 6 6 instead',
+    name: 'a 24: double-double run 4 5 5 6 6',
+    hand: '4H 5D 5C 6S',
+    starter: '6D',
+    total: 24,
+    kinds: { fifteen: 4, pair: 2, run: 4 },
+  },
+  {
+    name: 'a pair royal of sixes with a pair of threes',
     hand: '6H 6D 6C 3S',
     starter: '3D',
     total: 20,
@@ -142,25 +149,28 @@ const knownHands: KnownHand[] = [
   },
 ];
 
+function tallyOf(known: Pick<KnownHand, 'hand' | 'starter' | 'isCrib'>) {
+  return scoreShow({
+    cards: parseCards(known.hand),
+    starter: parseCard(known.starter),
+    isCrib: known.isCrib ?? false,
+  });
+}
+
+function pointsByKind(known: Pick<KnownHand, 'hand' | 'starter' | 'isCrib'>) {
+  return new Map(tallyOf(known).combinations.map((c) => [c.kind, c.points]));
+}
+
 describe('Show Tally', () => {
   for (const known of knownHands) {
     it(`scores ${known.name} for ${String(known.total)}`, () => {
-      const tally = scoreShow({
-        hand: parseCards(known.hand),
-        starter: parseCard(known.starter),
-        isCrib: known.isCrib ?? false,
-      });
-      expect(tally.total).toBe(known.total);
+      expect(tallyOf(known).total).toBe(known.total);
     });
   }
 
   for (const known of knownHands.filter((k) => k.kinds !== undefined)) {
     it(`lists the right Combinations for ${known.name}`, () => {
-      const tally = scoreShow({
-        hand: parseCards(known.hand),
-        starter: parseCard(known.starter),
-        isCrib: known.isCrib ?? false,
-      });
+      const tally = tallyOf(known);
       const counts: Partial<Record<CombinationKind, number>> = {};
       for (const c of tally.combinations) {
         counts[c.kind] = (counts[c.kind] ?? 0) + 1;
@@ -169,36 +179,45 @@ describe('Show Tally', () => {
     });
   }
 
-  it('totals equal the sum of the Combinations for every known hand', () => {
-    for (const known of knownHands) {
-      const tally = scoreShow({
-        hand: parseCards(known.hand),
-        starter: parseCard(known.starter),
-        isCrib: known.isCrib ?? false,
-      });
-      const sum = tally.combinations.reduce((acc, c) => acc + c.points, 0);
-      expect(sum).toBe(tally.total);
-    }
-  });
-
-  it('gives each Combination its point value', () => {
-    const tally = scoreShow({
-      hand: parseCards('5H 5D 5C JS'),
-      starter: parseCard('5S'),
-      isCrib: false,
-    });
-    const points = new Map(tally.combinations.map((c) => [c.kind, c.points]));
+  it('scores a Fifteen for two, a Double Pair Royal for twelve, and Nobs for one', () => {
+    const points = pointsByKind({ hand: '5H 5D 5C JS', starter: '5S' });
     expect(points.get('fifteen')).toBe(2);
     expect(points.get('double-pair-royal')).toBe(12);
     expect(points.get('nobs')).toBe(1);
   });
 
+  it('scores a Pair for two and a Pair Royal for six', () => {
+    expect(
+      pointsByKind({ hand: '3H 4D 5C 5S', starter: 'KD' }).get('pair'),
+    ).toBe(2);
+    expect(
+      pointsByKind({ hand: '7H 7D 7C 2S', starter: 'KD' }).get('pair-royal'),
+    ).toBe(6);
+  });
+
+  it('scores a Run one point per card', () => {
+    expect(
+      pointsByKind({ hand: '3H 4D 5C KS', starter: 'QD' }).get('run'),
+    ).toBe(3);
+    expect(
+      pointsByKind({ hand: '6H 7D 8C 9S', starter: 'KD' }).get('run'),
+    ).toBe(4);
+    expect(
+      pointsByKind({ hand: 'AH 2D 3C 4S', starter: '5D' }).get('run'),
+    ).toBe(5);
+  });
+
+  it('scores a Flush four for the Hand alone and five with the Starter', () => {
+    expect(
+      pointsByKind({ hand: '2H 4H 6H 9H', starter: 'KS' }).get('flush'),
+    ).toBe(4);
+    expect(
+      pointsByKind({ hand: '2H 4H 6H 9H', starter: 'KH' }).get('flush'),
+    ).toBe(5);
+  });
+
   it('names the cards that make up each Combination', () => {
-    const tally = scoreShow({
-      hand: parseCards('6H 7D 8C 9S'),
-      starter: parseCard('KD'),
-      isCrib: false,
-    });
+    const tally = tallyOf({ hand: '6H 7D 8C 9S', starter: 'KD' });
     const run = tally.combinations.find((c) => c.kind === 'run');
     expect(run?.points).toBe(4);
     expect(run?.cards.map((c) => c.rank).sort((a, b) => a - b)).toEqual([

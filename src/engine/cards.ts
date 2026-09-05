@@ -6,6 +6,8 @@ export type Suit = (typeof SUITS)[number];
 export const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as const;
 export type Rank = (typeof RANKS)[number];
 
+export const JACK: Rank = 11;
+
 export type Card = {
   readonly rank: Rank;
   readonly suit: Suit;
@@ -41,8 +43,8 @@ const SUIT_BY_CHAR: Readonly<Record<string, Suit>> = {
 
 /**
  * Reads a card from two-character notation: rank A 2-9 T J Q K, then suit
- * C D H S. So '5H' is the five of hearts and 'TS' the ten of spades. Meant
- * for tests and fixtures; malformed input is a programming error.
+ * C D H S. So '5H' is the five of hearts and 'TS' the ten of spades. Used by
+ * tests and fixtures; malformed input is a programming error.
  */
 export function parseCard(text: string): Card {
   const rankChar = text[0];

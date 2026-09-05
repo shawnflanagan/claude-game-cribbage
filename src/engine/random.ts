@@ -7,12 +7,18 @@ export type Rng = {
   readonly state: number;
 };
 
+/** The result of consuming randomness: what came out, and the state after. */
+export type Draw<T> = {
+  readonly value: T;
+  readonly rng: Rng;
+};
+
 export function createRng(seed: number): Rng {
   return { state: seed >>> 0 };
 }
 
 // mulberry32: small, fast, and good enough to shuffle cards.
-function nextUint32(rng: Rng): { value: number; rng: Rng } {
+function nextUint32(rng: Rng): Draw<number> {
   const state = (rng.state + 0x6d2b79f5) | 0;
   let t = state;
   t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -21,16 +27,13 @@ function nextUint32(rng: Rng): { value: number; rng: Rng } {
 }
 
 /** A uniform integer in [0, bound). */
-export function nextInt(rng: Rng, bound: number): { value: number; rng: Rng } {
+export function nextInt(rng: Rng, bound: number): Draw<number> {
   const draw = nextUint32(rng);
   return { value: Math.floor((draw.value / 2 ** 32) * bound), rng: draw.rng };
 }
 
 /** Fisher-Yates shuffle. Returns a new array; the input is untouched. */
-export function shuffle<T>(
-  items: readonly T[],
-  rng: Rng,
-): { items: T[]; rng: Rng } {
+export function shuffle<T>(items: readonly T[], rng: Rng): Draw<T[]> {
   const shuffled = [...items];
   let current = rng;
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -44,5 +47,5 @@ export function shuffle<T>(
       shuffled[j] = a;
     }
   }
-  return { items: shuffled, rng: current };
+  return { value: shuffled, rng: current };
 }

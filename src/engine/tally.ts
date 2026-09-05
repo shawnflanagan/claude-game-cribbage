@@ -16,7 +16,7 @@ export type Combination = {
   readonly cards: readonly Card[];
 };
 
-/** Every Combination for one Hand, the Crib, or one Pegging play. */
+/** Every Combination for one Hand, the Crib, or (later) one Pegging play. */
 export type Tally = {
   readonly combinations: readonly Combination[];
   readonly total: number;

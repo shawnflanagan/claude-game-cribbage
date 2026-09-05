@@ -1,9 +1,9 @@
-import { cardValue, type Card } from './cards';
+import { cardValue, JACK, type Card, type Rank } from './cards';
 import { makeTally, type Combination, type Tally } from './tally';
 
 export type ShowInput = {
-  /** The four cards kept in Hand, or the four in the Crib. */
-  readonly hand: readonly Card[];
+  /** The four cards kept in a Hand, or the four in the Crib. */
+  readonly cards: readonly Card[];
   readonly starter: Card;
   /** The Crib only scores a Flush when all five cards match. */
   readonly isCrib: boolean;
@@ -11,11 +11,11 @@ export type ShowInput = {
 
 /**
  * Scores a Hand or the Crib together with the Starter, listing every
- * Combination in the order a player would count them aloud: Fifteens,
+ * Combination in the order you would count them aloud: Fifteens,
  * Pairs, Runs, Flush, Nobs.
  */
 export function scoreShow(input: ShowInput): Tally {
-  const all = [...input.hand, input.starter];
+  const all = [...input.cards, input.starter];
   return makeTally([
     ...fifteens(all),
     ...pairs(all),
@@ -42,7 +42,7 @@ function fifteens(cards: readonly Card[]): Combination[] {
 
 /** Two of a rank is a Pair, three a Pair Royal, four a Double Pair Royal. */
 function pairs(cards: readonly Card[]): Combination[] {
-  const byRank = new Map<number, Card[]>();
+  const byRank = new Map<Rank, Card[]>();
   for (const card of cards) {
     byRank.set(card.rank, [...(byRank.get(card.rank) ?? []), card]);
   }
@@ -84,19 +84,19 @@ function runs(cards: readonly Card[]): Combination[] {
     .map((run) => ({ kind: 'run', points: run.length, cards: run }));
 }
 
-function flush({ hand, starter, isCrib }: ShowInput): Combination[] {
-  const first = hand[0];
-  if (first === undefined || !hand.every((c) => c.suit === first.suit)) {
+function flush({ cards, starter, isCrib }: ShowInput): Combination[] {
+  const first = cards[0];
+  if (first === undefined || !cards.every((c) => c.suit === first.suit)) {
     return [];
   }
   if (starter.suit === first.suit) {
-    return [{ kind: 'flush', points: 5, cards: [...hand, starter] }];
+    return [{ kind: 'flush', points: 5, cards: [...cards, starter] }];
   }
-  return isCrib ? [] : [{ kind: 'flush', points: 4, cards: [...hand] }];
+  return isCrib ? [] : [{ kind: 'flush', points: 4, cards: [...cards] }];
 }
 
 /** One for holding the Jack of the Starter's suit. */
-function nobs({ hand, starter }: ShowInput): Combination[] {
-  const jack = hand.find((c) => c.rank === 11 && c.suit === starter.suit);
+function nobs({ cards, starter }: ShowInput): Combination[] {
+  const jack = cards.find((c) => c.rank === JACK && c.suit === starter.suit);
   return jack === undefined ? [] : [{ kind: 'nobs', points: 1, cards: [jack] }];
 }
