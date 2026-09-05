@@ -105,6 +105,18 @@ _Avoid_: nibs, his heels
 The 1 point scored in the Show for holding the Jack of the Starter's suit.
 _Avoid_: his nobs, right Jack
 
+**Action**:
+A decision a Seat makes: a Discard or a Pegging play. The only inputs a Game takes after it starts; everything mechanical (dealing, cutting, counting) follows on its own.
+_Avoid_: move, command, input
+
+**Event**:
+One thing that happened in a Game as a result of an Action or of the rules advancing: a card dealt, a Starter cut, a Tally scored, a Round ended. The Log is written from Events.
+_Avoid_: message, notification
+
+**Violation**:
+The reason an Action was refused: not this Seat's turn, card not in Hand, Count would exceed 31, wrong phase, must discard exactly two. Never an error in the program sense.
+_Avoid_: error, exception, invalid move
+
 **Log**:
 The human-readable record of a Game, one line per thing that happened. Derived from the Game's history, never stored on its own.
 _Avoid_: history, transcript, feed
