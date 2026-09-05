@@ -51,10 +51,17 @@ export type GameState = {
   readonly hands: PerSeat<readonly Card[]>;
   readonly crib: readonly Card[];
   readonly starter: Card | null;
-  /** The undealt remainder of the deck. */
   readonly deck: readonly Card[];
   readonly pegging: PeggingState | null;
   readonly result: GameResult | null;
+};
+
+export type ShowCounted = {
+  type: 'show-counted';
+  seat: Seat;
+  source: 'hand' | 'crib';
+  cards: readonly Card[];
+  tally: Tally;
 };
 
 export type GameEvent =
@@ -63,13 +70,7 @@ export type GameEvent =
   | { type: 'discarded'; seat: Seat }
   | { type: 'starter-cut'; card: Card }
   | { type: 'heels'; seat: Seat; tally: Tally }
-  | {
-      type: 'show-counted';
-      seat: Seat;
-      source: 'hand' | 'crib';
-      cards: readonly Card[];
-      tally: Tally;
-    }
+  | ShowCounted
   | { type: 'round-ended'; round: number }
   | { type: 'game-won'; result: GameResult }
   | PeggingEvent;
@@ -90,11 +91,13 @@ export function newGame(seed: number, options: NewGameOptions = {}): Step {
   let rng = createRng(seed);
   const events: GameEvent[] = [];
   let dealer: Seat | null = null;
+  // Cut for deal: each Seat draws from a shuffled deck and the lower card
+  // deals, Ace low. A tie means cut again.
   while (dealer === null) {
     const cut = shuffle(fullDeck(), rng);
     rng = cut.rng;
     const [a, b] = cut.value;
-    if (a === undefined || b === undefined) throw new Error('empty deck');
+    if (a === undefined || b === undefined) throw unreachable('empty deck');
     dealer = a.rank < b.rank ? 0 : a.rank > b.rank ? 1 : null;
     events.push({ type: 'cut-for-deal', cuts: [a, b], dealer });
   }
@@ -134,6 +137,36 @@ function refuse(violation: Violation): ApplyResult {
   return { ok: false, violation };
 }
 
+/**
+ * For states the rules make impossible (a 52-card deck running dry, Pegging
+ * without a Starter). Not a Violation: no Action can cause it.
+ */
+function unreachable(what: string): Error {
+  return new Error(`Engine invariant broken: ${what}`);
+}
+
+function emit(state: GameState, ...events: GameEvent[]): Step {
+  return { state, events };
+}
+
+/** Runs `next` after `step` unless the Game has already been won. */
+function then(step: Step, next: (state: GameState) => Step): Step {
+  if (step.state.phase === 'game-over') return step;
+  const after = next(step.state);
+  return { state: after.state, events: [...step.events, ...after.events] };
+}
+
+/** Records an Event that carries a Tally, then adds its points. */
+function scoreEvent(
+  state: GameState,
+  event: GameEvent,
+  seat: Seat,
+  tally: Tally,
+): Step {
+  const scored = score(state, seat, tally.total);
+  return { state: scored.state, events: [event, ...scored.events] };
+}
+
 function applyDiscard(
   state: GameState,
   seat: Seat,
@@ -160,12 +193,11 @@ function applyDiscard(
     hands: withSeat(state.hands, seat, kept),
     crib: [...state.crib, ...cards],
   };
-  const events: GameEvent[] = [{ type: 'discarded', seat }];
   const bothDone = discarded.hands.every((h) => h.length === KEPT_SIZE);
-  const next = bothDone
-    ? cutStarter(discarded)
-    : { state: discarded, events: [] };
-  return { ok: true, state: next.state, events: [...events, ...next.events] };
+  const step = then(emit(discarded, { type: 'discarded', seat }), (s) =>
+    bothDone ? cutStarter(s) : emit(s),
+  );
+  return { ok: true, ...step };
 }
 
 function applyPlay(state: GameState, seat: Seat, card: Card): ApplyResult {
@@ -174,39 +206,32 @@ function applyPlay(state: GameState, seat: Seat, card: Card): ApplyResult {
   }
   const played = playCard(state.pegging, seat, card);
   if (!played.ok) return refuse(played.violation);
-  let current: GameState = { ...state, pegging: played.state };
-  const events: GameEvent[] = [];
+  let step = emit({ ...state, pegging: played.state });
   for (const event of played.events) {
-    events.push(event);
-    if (event.type === 'tally') {
-      const scored = score(current, event.seat, event.tally.total);
-      current = scored.state;
-      events.push(...scored.events);
-      if (current.phase === 'game-over') break;
-    }
+    step = then(step, (s) =>
+      event.type === 'tally'
+        ? scoreEvent(s, event, event.seat, event.tally)
+        : emit(s, event),
+    );
   }
-  if (current.phase !== 'game-over' && played.state.done) {
-    const shown = show(current);
-    current = shown.state;
-    events.push(...shown.events);
-  }
-  return { ok: true, state: current, events };
+  step = then(step, (s) => (played.state.done ? show(s) : emit(s)));
+  return { ok: true, ...step };
 }
 
-/** Shuffles a fresh deck and deals the next Round. */
 function deal(state: GameState, dealer: Seat): Step {
   const shuffled = shuffle(fullDeck(), state.rng);
   const deck = shuffled.value;
   const pone = otherSeat(dealer);
   const hands: [Card[], Card[]] = [[], []];
+  // Six cards each, one at a time, Pone first.
   for (let i = 0; i < HAND_SIZE * 2; i++) {
     const card = deck[i];
-    if (card === undefined) throw new Error('short deck');
+    if (card === undefined) throw unreachable('short deck');
     hands[i % 2 === 0 ? pone : dealer].push(card);
   }
   const round = state.round + 1;
-  return {
-    state: {
+  return emit(
+    {
       ...state,
       rng: shuffled.rng,
       dealer,
@@ -218,94 +243,92 @@ function deal(state: GameState, dealer: Seat): Step {
       deck: deck.slice(HAND_SIZE * 2),
       pegging: null,
     },
-    events: [{ type: 'dealt', dealer, round }],
-  };
+    { type: 'dealt', dealer, round },
+  );
 }
 
 /** Turns the Starter, scores Heels for a Jack, and begins Pegging. */
 function cutStarter(state: GameState): Step {
   const draw = nextInt(state.rng, state.deck.length);
   const starter = state.deck[draw.value];
-  if (starter === undefined) throw new Error('empty deck');
-  let current: GameState = {
-    ...state,
-    rng: draw.rng,
-    starter,
-    deck: state.deck.filter((_, i) => i !== draw.value),
-  };
-  const events: GameEvent[] = [{ type: 'starter-cut', card: starter }];
-  if (starter.rank === JACK) {
-    const tally = makeTally([{ kind: 'heels', points: 2, cards: [starter] }]);
-    events.push({ type: 'heels', seat: current.dealer, tally });
-    const scored = score(current, current.dealer, tally.total);
-    current = scored.state;
-    events.push(...scored.events);
-    if (current.phase === 'game-over') return { state: current, events };
-  }
-  return {
-    state: {
-      ...current,
-      phase: 'pegging',
-      pegging: startPegging(current.hands, otherSeat(current.dealer)),
+  if (starter === undefined) throw unreachable('empty deck');
+  const cut = emit(
+    {
+      ...state,
+      rng: draw.rng,
+      starter,
+      deck: state.deck.filter((_, i) => i !== draw.value),
     },
-    events,
-  };
+    { type: 'starter-cut', card: starter },
+  );
+  const withHeels = then(cut, (s) => {
+    if (starter.rank !== JACK) return emit(s);
+    const tally = makeTally([{ kind: 'heels', points: 2, cards: [starter] }]);
+    const event: GameEvent = { type: 'heels', seat: s.dealer, tally };
+    return scoreEvent(s, event, s.dealer, tally);
+  });
+  return then(withHeels, (s) =>
+    emit({
+      ...s,
+      phase: 'pegging',
+      pegging: startPegging(s.hands, otherSeat(s.dealer)),
+    }),
+  );
 }
 
 /** Pone's Hand, then the Dealer's, then the Crib; then the next Round. */
 function show(state: GameState): Step {
-  if (state.starter === null) throw new Error('no Starter');
+  const starter = state.starter;
+  if (starter === null) throw unreachable('Pegging without a Starter');
   const dealer = state.dealer;
   const pone = otherSeat(dealer);
-  const counts: {
-    seat: Seat;
-    source: 'hand' | 'crib';
-    cards: readonly Card[];
-  }[] = [
+  const counts: Omit<ShowCounted, 'type' | 'tally'>[] = [
     { seat: pone, source: 'hand', cards: state.hands[pone] },
     { seat: dealer, source: 'hand', cards: state.hands[dealer] },
     { seat: dealer, source: 'crib', cards: state.crib },
   ];
-  let current = state;
-  const events: GameEvent[] = [];
+  let step = emit(state);
   for (const count of counts) {
-    const tally = scoreShow({
-      cards: count.cards,
-      starter: state.starter,
-      isCrib: count.source === 'crib',
+    step = then(step, (s) => {
+      const tally = scoreShow({
+        cards: count.cards,
+        starter,
+        isCrib: count.source === 'crib',
+      });
+      const event: ShowCounted = { type: 'show-counted', ...count, tally };
+      return scoreEvent(s, event, count.seat, tally);
     });
-    events.push({ type: 'show-counted', ...count, tally });
-    const scored = score(current, count.seat, tally.total);
-    current = scored.state;
-    events.push(...scored.events);
-    if (current.phase === 'game-over') return { state: current, events };
   }
-  events.push({ type: 'round-ended', round: current.round });
-  const dealt = deal(current, pone);
-  return { state: dealt.state, events: [...events, ...dealt.events] };
+  step = then(step, (s) => emit(s, { type: 'round-ended', round: s.round }));
+  return then(step, (s) => deal(s, pone));
 }
 
 /** Adds points for a Seat and ends the Game the instant 121 is reached. */
 function score(state: GameState, seat: Seat, points: number): Step {
-  if (points === 0) return { state, events: [] };
+  if (points === 0) return emit(state);
   const total = Math.min(WINNING_SCORE, state.scores[seat] + points);
   const scores = withSeat(state.scores, seat, total);
-  if (total < WINNING_SCORE) return { state: { ...state, scores }, events: [] };
-  const loser = scores[otherSeat(seat)];
-  const result: GameResult = {
-    winner: seat,
-    scores,
-    skunk:
-      loser < DOUBLE_SKUNK_LINE
-        ? 'double-skunk'
-        : loser < SKUNK_LINE
-          ? 'skunk'
-          : 'none',
-  };
-  return {
-    state: { ...state, scores, phase: 'game-over', result },
-    events: [{ type: 'game-won', result }],
-  };
+  if (total < WINNING_SCORE) return emit({ ...state, scores });
+  const result = gameResult(seat, scores);
+  return emit(
+    { ...state, scores, phase: 'game-over', result },
+    { type: 'game-won', result },
+  );
+}
+
+/**
+ * The result once `winner` has reached 121: a Skunk if the loser is under
+ * 91, a Double Skunk under 61.
+ */
+export function gameResult(winner: Seat, scores: PerSeat<number>): GameResult {
+  const loser = scores[otherSeat(winner)];
+  const skunk: Skunk =
+    loser < DOUBLE_SKUNK_LINE
+      ? 'double-skunk'
+      : loser < SKUNK_LINE
+        ? 'skunk'
+        : 'none';
+  return { winner, scores, skunk };
 }
 
 export type PeggingView = {
@@ -315,7 +338,7 @@ export type PeggingView = {
   readonly done: boolean;
   /** The viewing Seat's cards still to play. */
   readonly hand: readonly Card[];
-  readonly otherHandCount: number;
+  readonly otherHandSize: number;
   /** Which of `hand` may be played onto the Count right now. */
   readonly legal: readonly Card[];
 };
@@ -329,8 +352,8 @@ export type View = {
   readonly round: number;
   readonly result: GameResult | null;
   readonly hand: readonly Card[];
-  readonly otherHandCount: number;
-  readonly cribCount: number;
+  readonly otherHandSize: number;
+  readonly cribSize: number;
   readonly starter: Card | null;
   /** Whether each Seat has sent its Discards to the Crib this Round. */
   readonly discarded: PerSeat<boolean>;
@@ -348,8 +371,8 @@ export function viewFor(state: GameState, seat: Seat): View {
     round: state.round,
     result: state.result,
     hand: state.hands[seat],
-    otherHandCount: state.hands[other].length,
-    cribCount: state.crib.length,
+    otherHandSize: state.hands[other].length,
+    cribSize: state.crib.length,
     starter: state.starter,
     discarded: [
       state.hands[0].length === KEPT_SIZE,
@@ -364,7 +387,7 @@ export function viewFor(state: GameState, seat: Seat): View {
             turn: pegging.turn,
             done: pegging.done,
             hand: pegging.hands[seat],
-            otherHandCount: pegging.hands[other].length,
+            otherHandSize: pegging.hands[other].length,
             legal: legalCards(pegging, seat),
           },
   };
