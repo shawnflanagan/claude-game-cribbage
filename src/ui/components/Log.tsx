@@ -16,7 +16,7 @@ export function Log({ events, human }: Props) {
     if (el !== null) el.scrollTop = el.scrollHeight;
   }, [lines.length]);
   return (
-    <section className="log" aria-label="Log" ref={box}>
+    <section className="log" id="log" aria-label="Log" ref={box} tabIndex={0}>
       <h2>Log</h2>
       <ol>
         {lines.map((line, i) => (

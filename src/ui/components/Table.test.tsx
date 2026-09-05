@@ -56,6 +56,7 @@ describe('Table during the Show', () => {
     legal: [],
     humanToAct: false,
     onAct: () => undefined,
+    onNewGame: () => undefined,
   };
 
   it('shows the count, its Combinations, and the kept cards, and hides the Computer hand until counted', () => {

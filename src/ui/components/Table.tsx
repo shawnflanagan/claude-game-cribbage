@@ -3,6 +3,7 @@ import { cardKey } from '../cards';
 import { combinations, seatName } from '../log';
 import type { Pause, TableModel } from '../session';
 import { CardBack, CardView } from './CardView';
+import { GameOver } from './GameOver';
 import { DiscardHand, HiddenHand, PeggingHand, ShownHand } from './Hand';
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   pause: Pause;
   onAct: (action: Action) => void;
   onContinue: () => void;
+  onNewGame: () => void;
 };
 
 export function Table({
@@ -24,6 +26,7 @@ export function Table({
   pause,
   onAct,
   onContinue,
+  onNewGame,
 }: Props) {
   const computer = otherSeat(human);
   const who = (seat: Seat) => seatName(seat, human);
@@ -53,6 +56,9 @@ export function Table({
       </section>
 
       <section className="middle">
+        {model.stage === 'over' && model.result !== null && (
+          <GameOver result={model.result} human={human} onNewGame={onNewGame} />
+        )}
         {model.stage === 'cutting' && model.cuts !== null && (
           <div className="cut" aria-label="Cut for deal">
             <span>You cut</span>

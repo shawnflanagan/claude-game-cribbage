@@ -54,7 +54,6 @@ body {
   grid-template-areas:
     'top'
     'board'
-    'over'
     'table'
     'log';
 }
@@ -65,7 +64,6 @@ body {
     grid-template-areas:
       'top top'
       'board board'
-      'over over'
       'table log';
     align-items: start;
   }
@@ -76,9 +74,6 @@ body {
 }
 .board {
   grid-area: board;
-}
-.game-over {
-  grid-area: over;
 }
 .table {
   grid-area: table;
@@ -92,7 +87,7 @@ body {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas:
-    'title button'
+    'title actions'
     'scores scores';
   align-items: center;
   gap: 0.25rem 1rem;
@@ -101,7 +96,7 @@ body {
 @media (min-width: 36rem) {
   .top {
     grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'title scores button';
+    grid-template-areas: 'title scores actions';
   }
 }
 
@@ -137,8 +132,27 @@ body {
   font-size: 0.9rem;
 }
 
+.top-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* The Log is below the fold on a phone; wider layouts show it alongside. */
+.quiet-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+@media (min-width: 60rem) {
+  .quiet-link {
+    display: none;
+  }
+}
+
 .quiet {
-  grid-area: button;
   font: inherit;
   background: transparent;
   color: var(--paper);
@@ -255,6 +269,11 @@ button.card.card-selected:hover:not(:disabled) {
   box-shadow:
     0 0 0 3px var(--accent),
     0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+}
+
+/* Keep the focus ring visible outside the selection ring. */
+button.card.card-selected:focus-visible {
+  outline-offset: 5px;
 }
 
 .card-back {
@@ -398,6 +417,7 @@ button.card.card-selected:hover:not(:disabled) {
 
 /* Result */
 .game-over {
+  width: min(100%, 24rem);
   background: var(--paper);
   color: var(--ink);
   border-radius: var(--radius);
@@ -469,7 +489,8 @@ button.card.card-selected:hover:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   .card,
   button.card:hover:not(:disabled),
-  .card-selected {
+  .card-selected,
+  button.card.card-selected:hover:not(:disabled) {
     transition: none;
     transform: none;
   }

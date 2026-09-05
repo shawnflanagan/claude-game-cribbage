@@ -17,6 +17,13 @@ pnpm check        # typecheck, lint, format check, test: what CI runs
 pnpm build        # production build into dist/
 ```
 
+## What it looks like
+
+| Desktop                                                              | Phone                                                            |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| ![Desktop, choosing a Discard](docs/screenshots/desktop-discard.png) | ![Phone, choosing a Discard](docs/screenshots/phone-discard.png) |
+| ![Desktop, Pegging](docs/screenshots/desktop-pegging.png)            | ![Phone, the Show](docs/screenshots/phone-show.png)              |
+
 ## How it's put together
 
 - `src/engine/` will hold the game: pure TypeScript, immutable state, seeded randomness, no React.

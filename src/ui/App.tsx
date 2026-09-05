@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { otherSeat } from '../engine';
 import { heuristicOpponent } from '../opponent';
 import { Board } from './components/Board';
-import { GameOver } from './components/GameOver';
 import { Log } from './components/Log';
 import { Table } from './components/Table';
 import { present } from './session';
@@ -48,18 +47,20 @@ export function App({
             <span className="round">Round {model.round}</span>
           )}
         </div>
-        <button type="button" className="quiet" onClick={startNew}>
-          New game
-        </button>
+        <nav className="top-actions">
+          <a className="quiet quiet-link" href="#log">
+            Log
+          </a>
+          <button type="button" className="quiet" onClick={startNew}>
+            New game
+          </button>
+        </nav>
       </header>
       <Board
         scores={model.scores}
         previous={model.previousScores}
         human={human}
       />
-      {model.stage === 'over' && model.result !== null ? (
-        <GameOver result={model.result} human={human} onNewGame={startNew} />
-      ) : null}
       <Table
         model={model}
         human={human}
@@ -68,6 +69,7 @@ export function App({
         pause={game.pause}
         onAct={game.act}
         onContinue={game.continueShow}
+        onNewGame={startNew}
       />
       <Log events={session.events.slice(0, session.revealed)} human={human} />
     </div>
