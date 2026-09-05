@@ -13,6 +13,8 @@ type Props = {
   /** Scales the presentation delays; 0 makes everything instant for tests. */
   pace?: number;
   confirmNewGame?: () => boolean;
+  /** Where the Game in progress is kept between visits; null keeps nothing. */
+  storage?: Storage | null;
 };
 
 export function App({
@@ -20,9 +22,10 @@ export function App({
   pace = 1,
   confirmNewGame = () =>
     window.confirm('Abandon this game and start a new one?'),
+  storage = browserStorage(),
 }: Props) {
   const [firstSeed] = useState(() => seed ?? freshSeed());
-  const game = useGame(firstSeed, heuristicOpponent, pace);
+  const game = useGame(firstSeed, heuristicOpponent, pace, storage);
   const { session } = game;
   const human = session.human;
   const model = present(session);
@@ -67,4 +70,12 @@ export function App({
 
 function freshSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
+}
+
+function browserStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }

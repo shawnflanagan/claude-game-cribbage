@@ -32,6 +32,8 @@ export type Session = {
   readonly human: Seat;
   readonly engine: GameState;
   readonly events: readonly GameEvent[];
+  /** Every accepted Action so far: with the seed, the whole Game (ADR 0002). */
+  readonly actions: readonly Action[];
   readonly revealed: number;
   readonly opponentRng: Rng;
 };
@@ -43,6 +45,7 @@ export function startSession(seed: number, human: Seat = 0): Session {
     human,
     engine: state,
     events,
+    actions: [],
     revealed: 0,
     // The opponent's stream is derived from the seed so a Game replays.
     opponentRng: createRng(seed ^ 0x5eed),
@@ -57,6 +60,7 @@ export function humanAct(session: Session, action: Action): Session {
     ...session,
     engine: result.state,
     events: [...session.events, ...result.events],
+    actions: [...session.actions, action],
   };
 }
 
@@ -83,6 +87,7 @@ export function computerAct(
     ...session,
     engine: result.state,
     events: [...session.events, ...result.events],
+    actions: [...session.actions, choice.value],
     opponentRng: choice.rng,
   };
 }

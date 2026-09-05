@@ -12,6 +12,7 @@ import {
   type Pause,
   type Session,
 } from './session';
+import { clearSaved, loadSaved, saveGame } from './storage';
 
 type Command =
   | { type: 'human'; action: Action }
@@ -48,11 +49,32 @@ export type Game = {
  * Owns one Game for the UI: applies the human's Actions, lets the opponent
  * move whenever the engine is waiting on it, and walks the presentation
  * cursor at a human pace. `pace` scales every delay; 0 makes tests instant.
- * The seed only seeds the first Game; later Games come from `newGame`.
+ * A saved Game in `storage` takes precedence over `seed`, which only seeds
+ * the first Game; later Games come from `newGame`.
  */
-export function useGame(seed: number, opponent: Opponent, pace = 1): Game {
-  const [session, dispatch] = useReducer(reduce, seed, startSession);
+export function useGame(
+  seed: number,
+  opponent: Opponent,
+  pace = 1,
+  storage: Storage | null = null,
+): Game {
+  const [session, dispatch] = useReducer(
+    reduce,
+    null,
+    () => (storage === null ? null : loadSaved(storage)) ?? startSession(seed),
+  );
   const pause = nextPause(session);
+
+  // Save after every decision of the human's; a Game they have not yet
+  // touched is not worth keeping, so New game leaves nothing behind.
+  const decisions = session.actions.filter(
+    (a) => a.seat === session.human,
+  ).length;
+  useEffect(() => {
+    if (storage === null) return;
+    if (decisions === 0) clearSaved(storage);
+    else saveGame(storage, session);
+  }, [storage, decisions, session]);
 
   useEffect(() => {
     if (computerToAct(session)) dispatch({ type: 'computer', opponent });
