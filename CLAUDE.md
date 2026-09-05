@@ -13,3 +13,14 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 ### Domain docs
 
 Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root, created lazily by `/domain-modeling`. See `docs/agents/domain.md`.
+
+## Coding standards
+
+- Use the glossary in `CONTEXT.md` for every domain concept: identifiers, test names, Log text. Check the `_Avoid_` lists before naming anything.
+- Tests are colocated as `foo.test.ts` beside `foo.ts`. Test names read as sentences about behaviour ("scores a pair royal for six").
+- String-literal unions, never enums. Named exports only, no default exports.
+- Code under `src/engine/` and `src/opponent/` is pure: no `Date`, `Math.random`, timers, or I/O. Randomness comes from the seeded source carried in game state.
+- Illegal Actions are Violations returned as values from `apply`, never thrown. The UI must never be able to produce one, because it greys out illegal moves.
+- Prefer a few deep modules with narrow interfaces over many shallow files. See the `codebase-design` skill for the vocabulary.
+- Comments explain a rule of cribbage or a non-obvious why. Never restate what the code does.
+- The architecture is fixed by `docs/adr/`. Read ADRs 0001 to 0003 before touching engine, opponent, or persistence code.
