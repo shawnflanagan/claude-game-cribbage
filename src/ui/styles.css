@@ -1,7 +1,9 @@
 :root {
-  --felt: #2f6b3a;
-  --felt-dark: #23512c;
+  color-scheme: light dark;
+  --felt: #285a31;
+  --felt-deep: #1e4726;
   --felt-inset: rgba(0, 0, 0, 0.18);
+  --table-edge: rgba(255, 255, 255, 0.08);
   --paper: #fffdf7;
   --ink: #1b1b1b;
   --red: #b3261e;
@@ -10,8 +12,22 @@
   --wood: #5b3a1e;
   --wood-dark: #2b1a0c;
   --wood-darker: #1a0f06;
+  --board-edge: rgba(0, 0, 0, 0.25);
+  --peg-edge: rgba(0, 0, 0, 0.5);
   --computer-peg: #8fb4ff;
+  --card-edge: #d6cfbd;
+  --court-tint: rgba(0, 0, 0, 0.03);
+  --card-back: #46579a;
+  --card-back-edge: #2e3a6b;
+  --card-back-lattice: rgba(255, 255, 255, 0.22);
+  --pile-outline: rgba(255, 255, 255, 0.25);
+  --count-pill: rgba(0, 0, 0, 0.3);
+  --log-bg: rgba(0, 0, 0, 0.28);
+  --paper-divider: rgba(0, 0, 0, 0.12);
+  --paper-edge: rgba(0, 0, 0, 0.35);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --lift-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+  --glow-strength: 70%;
   --radius: 0.75rem;
   --card-w: 3.75rem;
   --card-h: 5.2rem;
@@ -22,8 +38,39 @@
     Roboto,
     sans-serif;
   color: var(--paper);
-  background: var(--felt-dark);
+  background: var(--felt-deep);
   line-height: 1.35;
+}
+
+/*
+ * Dark mode follows the system alone. The table, board, and panels go darker
+ * and the peg colours brighten for contrast; card faces stay paper-white so
+ * cards still look like cards.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --felt: #234b2c;
+    --felt-deep: #142a19;
+    --felt-inset: rgba(0, 0, 0, 0.32);
+    --table-edge: rgba(255, 255, 255, 0.06);
+    --accent: #f6cd66;
+    /* Slightly less white: the darker felt already lifts it well past AA. */
+    --muted: rgba(255, 255, 255, 0.74);
+    --wood: #43301c;
+    --wood-dark: #1c1108;
+    --wood-darker: #0e0803;
+    --board-edge: rgba(0, 0, 0, 0.45);
+    --computer-peg: #a4c4ff;
+    --card-back: #3a4a86;
+    --card-back-edge: #222c55;
+    --card-back-lattice: rgba(255, 255, 255, 0.16);
+    --pile-outline: rgba(255, 255, 255, 0.2);
+    --count-pill: rgba(0, 0, 0, 0.5);
+    --log-bg: rgba(0, 0, 0, 0.45);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    --lift-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.6);
+    --glow-strength: 55%;
+  }
 }
 
 /* Six cards plus gaps must fit a 390px phone in one row; 52px still taps well. */
@@ -82,7 +129,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--felt-dark);
+  background: var(--felt-deep);
 }
 
 /* Layout: one column on a phone, table and Log side by side when wide. */
@@ -211,7 +258,7 @@ body {
   padding: 0.75rem;
   display: grid;
   gap: 0.75rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--table-edge);
 }
 
 .seat header {
@@ -252,7 +299,7 @@ body {
   height: var(--card-h);
   padding: 0;
   border-radius: 0.45rem;
-  border: 1px solid #d6cfbd;
+  border: 1px solid var(--card-edge);
   background: var(--paper);
   color: var(--ink);
   font: inherit;
@@ -335,7 +382,7 @@ body {
   gap: 0.1rem;
   border: 1px solid currentColor;
   border-radius: 0.2rem;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--court-tint);
 }
 
 .card-court-letter {
@@ -353,7 +400,7 @@ button.card {
 
 button.card:hover:not(:disabled) {
   transform: translateY(-0.25rem);
-  box-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+  box-shadow: var(--lift-shadow);
 }
 
 button.card:focus-visible,
@@ -374,7 +421,7 @@ button.card.card-selected:hover:not(:disabled) {
   transform: translateY(-0.6rem);
   box-shadow:
     0 0 0 3px var(--accent),
-    0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+    var(--lift-shadow);
 }
 
 /* Part of the Combination being counted out: lifted, with a gold glow. The
@@ -385,8 +432,9 @@ button.card.card-selected:hover:not(:disabled) {
   transform: translateY(-0.4rem);
   box-shadow:
     0 0 0 3px var(--accent),
-    0 0 1rem 0.2rem color-mix(in srgb, var(--accent) 70%, transparent),
-    0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+    0 0 1rem 0.2rem
+      color-mix(in srgb, var(--accent) var(--glow-strength), transparent),
+    var(--lift-shadow);
 }
 
 /* Keep the focus ring visible outside the selection ring. */
@@ -396,21 +444,21 @@ button.card.card-selected:focus-visible {
 
 /* Backs: a lattice inside a white frame, unmistakably face down. */
 .card-back {
-  border-color: #2e3a6b;
+  border-color: var(--card-back-edge);
   background:
     repeating-linear-gradient(
         45deg,
         transparent 0 5px,
-        rgba(255, 255, 255, 0.22) 5px 6px
+        var(--card-back-lattice) 5px 6px
       )
       padding-box,
     repeating-linear-gradient(
         -45deg,
         transparent 0 5px,
-        rgba(255, 255, 255, 0.22) 5px 6px
+        var(--card-back-lattice) 5px 6px
       )
       padding-box,
-    #46579a padding-box;
+    var(--card-back) padding-box;
   box-shadow:
     inset 0 0 0 3px var(--paper),
     var(--shadow);
@@ -502,7 +550,7 @@ button.card.card-selected:focus-visible {
   width: var(--card-w);
   height: var(--card-h);
   border-radius: 0.45rem;
-  outline: 1px dashed rgba(255, 255, 255, 0.25);
+  outline: 1px dashed var(--pile-outline);
   outline-offset: -1px;
 }
 
@@ -559,7 +607,7 @@ button.card.card-selected:focus-visible {
   margin-left: 0.25rem;
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--count-pill);
   color: var(--accent);
   font-size: 1.5rem;
   font-variant-numeric: tabular-nums;
@@ -649,7 +697,7 @@ button.card.card-selected:focus-visible {
 
 /* Log */
 .log {
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--log-bg);
   border-radius: var(--radius);
   padding: 0.6rem 0.8rem;
   max-height: 14rem;
@@ -705,7 +753,7 @@ button.card.card-selected:focus-visible {
 .record {
   margin: 0.75rem 0 1rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-top: 1px solid var(--paper-divider);
 }
 
 .record p {
@@ -728,7 +776,7 @@ button.card.card-selected:focus-visible {
 /* A quiet button on the paper-white result card. */
 .quiet-dark {
   color: var(--ink);
-  border-color: rgba(0, 0, 0, 0.35);
+  border-color: var(--paper-edge);
 }
 
 /* Board */
@@ -736,7 +784,7 @@ button.card.card-selected:focus-visible {
   background: var(--wood);
   border-radius: var(--radius);
   padding: 0.5rem 0.75rem;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px var(--board-edge);
 }
 
 .board svg {
@@ -762,7 +810,7 @@ button.card.card-selected:focus-visible {
 }
 
 .peg circle {
-  stroke: rgba(0, 0, 0, 0.5);
+  stroke: var(--peg-edge);
   stroke-width: 0.8;
 }
 

@@ -79,3 +79,22 @@ test('plays a Round through the Show without console errors', async ({
   await expect(page.getByLabel('Scores')).toContainText('Round 2');
   expect(errors).toEqual([]);
 });
+
+test('follows the system colour scheme', async ({ page }, testInfo) => {
+  const errors = watchErrors(page);
+  await page.goto(`/?seed=${String(SEED)}`);
+  const felt = () =>
+    page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--felt'),
+    );
+  const dark = testInfo.project.use.colorScheme === 'dark';
+  expect(
+    await page.evaluate(
+      () => window.matchMedia('(prefers-color-scheme: dark)').matches,
+    ),
+  ).toBe(dark);
+  const asIs = await felt();
+  await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
+  expect(await felt()).not.toBe(asIs);
+  expect(errors).toEqual([]);
+});

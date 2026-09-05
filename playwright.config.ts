@@ -21,6 +21,7 @@ export default defineConfig({
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'] } },
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'dark', use: { ...devices['Pixel 7'], colorScheme: 'dark' } },
   ],
   webServer: {
     command: `pnpm build && pnpm exec vite preview --port ${String(PORT)} --strictPort`,
