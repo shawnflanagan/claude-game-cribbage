@@ -24,6 +24,9 @@ pnpm build        # production build into dist/
 | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | ![Desktop, choosing a Discard](docs/screenshots/desktop-discard.png) | ![Phone, choosing a Discard](docs/screenshots/phone-discard.png) |
 | ![Desktop, Pegging](docs/screenshots/desktop-pegging.png)            | ![Phone, the Show](docs/screenshots/phone-show.png)              |
+| ![Desktop, dark mode](docs/screenshots/desktop-dark-pegging.png)     | ![Phone, dark mode](docs/screenshots/phone-dark-discard.png)     |
+
+The table follows your system's light or dark setting.
 
 ## How it's put together
 

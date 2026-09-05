@@ -7,6 +7,8 @@ export {
   parseCard,
   parseCards,
   sameCard,
+  RANKS,
+  SUITS,
 } from './cards';
 export type { Card, Rank, Suit } from './cards';
 export {
@@ -41,5 +43,6 @@ export type { Draw, Rng } from './random';
 export { otherSeat, withSeat } from './seat';
 export { scoreShow } from './show';
 export type { PerSeat, Seat } from './seat';
+export { makeTally } from './tally';
 export type { Combination, CombinationKind, Tally } from './tally';
 export type { Violation } from './violation';

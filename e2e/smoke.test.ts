@@ -37,6 +37,15 @@ test('plays a Round through the Show without console errors', async ({
   // Any two cards are a legal Discard, so the first two will do.
   await expect(status).toHaveText('Choose your Discard for the Crib.');
   await expect(hand).toHaveCount(6);
+  // Six cards fit one row on a phone, and nothing pushes the page sideways.
+  const tops = await hand.evaluateAll((cards) =>
+    cards.map((card) => card.getBoundingClientRect().top),
+  );
+  expect(new Set(tops).size).toBe(1);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
   await hand.nth(0).click();
   await hand.nth(1).click();
   await page.getByRole('button', { name: 'Send to crib' }).click();
@@ -68,5 +77,24 @@ test('plays a Round through the Show without console errors', async ({
     .toBe('Choose your Discard for the Crib.');
 
   await expect(page.getByLabel('Scores')).toContainText('Round 2');
+  expect(errors).toEqual([]);
+});
+
+test('follows the system colour scheme', async ({ page }, testInfo) => {
+  const errors = watchErrors(page);
+  await page.goto(`/?seed=${String(SEED)}`);
+  const felt = () =>
+    page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--felt'),
+    );
+  const dark = testInfo.project.use.colorScheme === 'dark';
+  expect(
+    await page.evaluate(
+      () => window.matchMedia('(prefers-color-scheme: dark)').matches,
+    ),
+  ).toBe(dark);
+  const asIs = await felt();
+  await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
+  expect(await felt()).not.toBe(asIs);
   expect(errors).toEqual([]);
 });

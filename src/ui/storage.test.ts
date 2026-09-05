@@ -39,7 +39,7 @@ describe('saving a Game', () => {
     const session = afterSomePlay(11);
     const saved = serialize(session);
     expect(Object.keys(saved).sort()).toEqual(
-      ['actions', 'human', 'opponentRng', 'seed', 'version'].sort(),
+      ['actions', 'human', 'opponentRng', 'scores', 'seed', 'version'].sort(),
     );
     expect(saved.seed).toBe(11);
     expect(saved.actions).toEqual(session.actions);
@@ -121,7 +121,22 @@ describe('saving a Game', () => {
     ).toBeNull();
   });
 
-  it('does not restore a finished Game', () => {
+  it('restores a Game started from a handicap at the same scores', () => {
+    const session = startSession(5, 0, { scores: [100, 90] });
+    const restored = restore(serialize(session));
+    expect(restored?.engine.scores).toEqual([100, 90]);
+    expect(restored?.startingScores).toEqual([100, 90]);
+  });
+
+  it('reads a save from before handicaps as a Game from zero', () => {
+    const { version, seed, human, opponentRng, actions } = serialize(
+      startSession(5),
+    );
+    const older = { version, seed, human, opponentRng, actions };
+    expect(restore(older)?.engine.scores).toEqual([0, 0]);
+  });
+
+  it('restores a finished Game onto its result screen', () => {
     let session = startSession(2026);
     for (
       let guard = 0;
@@ -146,7 +161,9 @@ describe('saving a Game', () => {
       }
     }
     expect(session.engine.phase).toBe('game-over');
-    expect(restore(serialize(session))).toBeNull();
+    const restored = restore(serialize(session));
+    expect(restored?.engine.phase).toBe('game-over');
+    expect(restored?.revealed).toBe(session.events.length);
   });
 });
 

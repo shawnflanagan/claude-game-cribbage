@@ -12,5 +12,8 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/ui/test-setup.ts'],
+    // Without this Vitest blanks CSS modules, including the raw import the
+    // stylesheet test reads.
+    css: true,
   },
 });
