@@ -53,8 +53,8 @@ export function App({
         </button>
       </header>
       <Board
-        scores={[model.scores[0], model.scores[1]]}
-        previous={[model.previousScores[0], model.previousScores[1]]}
+        scores={model.scores}
+        previous={model.previousScores}
         human={human}
       />
       {model.stage === 'over' && model.result !== null ? (

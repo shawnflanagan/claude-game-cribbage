@@ -6,6 +6,10 @@
   --red: #b3261e;
   --accent: #f2c14e;
   --muted: rgba(255, 255, 255, 0.75);
+  --wood: #5b3a1e;
+  --wood-dark: #2b1a0c;
+  --wood-darker: #1a0f06;
+  --computer-peg: #8fb4ff;
   font-family:
     system-ui,
     -apple-system,
@@ -272,7 +276,7 @@ button.card:disabled {
 }
 
 .board {
-  background: #5b3a1e;
+  background: var(--wood);
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem;
 }
@@ -284,11 +288,11 @@ button.card:disabled {
 }
 
 .hole {
-  fill: #2b1a0c;
+  fill: var(--wood-dark);
 }
 
 .hole-game {
-  fill: #1a0f06;
+  fill: var(--wood-darker);
   stroke: var(--accent);
   stroke-width: 1;
 }
@@ -309,7 +313,7 @@ button.card:disabled {
 }
 
 .track-1 .peg circle {
-  fill: #8fb4ff;
+  fill: var(--computer-peg);
 }
 
 .peg-back circle {

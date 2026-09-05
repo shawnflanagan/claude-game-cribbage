@@ -105,6 +105,13 @@ describe('App with a saved Game', () => {
       expect(screen.getByText(/Count/)).toBeDefined();
     });
     const logBefore = screen.getByRole('list').textContent;
+    // The board follows the presented scores.
+    const youScore = /You (\d+)/.exec(
+      screen.getByLabelText('Scores').textContent,
+    )?.[1];
+    expect(
+      screen.getByLabelText(`You, front peg at ${youScore ?? '?'}`),
+    ).toBeDefined();
     const countBefore = screen.getByText(/Count/).textContent;
     const scoresBefore = screen.getByLabelText('Scores').textContent;
     first.unmount();

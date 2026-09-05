@@ -11,6 +11,9 @@ export {
 export type { Card, Rank, Suit } from './cards';
 export {
   DISCARD_SIZE,
+  DOUBLE_SKUNK_LINE,
+  SKUNK_LINE,
+  WINNING_SCORE,
   apply,
   gameResult,
   newGame,

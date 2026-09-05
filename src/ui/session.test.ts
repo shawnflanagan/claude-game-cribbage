@@ -271,6 +271,7 @@ describe('session: back pegs', () => {
 
   it('starts both scores and previous scores at zero', () => {
     const model = present(revealAll(startSession(7)));
+    expect(model.scores).toEqual([0, 0]);
     expect(model.previousScores).toEqual([0, 0]);
   });
 });
