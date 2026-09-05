@@ -7,7 +7,9 @@ export type CombinationKind =
   | 'double-pair-royal'
   | 'run'
   | 'flush'
-  | 'nobs';
+  | 'nobs'
+  | 'thirty-one'
+  | 'last-card';
 
 /** One scoring item: what kind, how many points, and which cards made it. */
 export type Combination = {
@@ -16,7 +18,7 @@ export type Combination = {
   readonly cards: readonly Card[];
 };
 
-/** Every Combination for one Hand, the Crib, or (later) one Pegging play. */
+/** Every Combination for one Hand, the Crib, or one Pegging play. */
 export type Tally = {
   readonly combinations: readonly Combination[];
   readonly total: number;
