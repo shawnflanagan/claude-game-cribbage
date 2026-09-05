@@ -400,15 +400,89 @@ button.card.card-selected:focus-visible {
   justify-content: center;
 }
 
-.play-area {
+/*
+ * Two Pegging rows on one grid: column 1 is each Seat's pile, the rest the
+ * sequence in play order. Rows use display: contents so the grid places
+ * their children directly.
+ */
+.play-rows {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.35rem 0.4rem;
+  align-items: center;
   justify-items: center;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.25rem;
+}
+
+.play-row {
+  display: contents;
+}
+
+.play-row-tint {
+  display: block;
+  align-self: stretch;
+  justify-self: stretch;
+  margin: -0.2rem -0.25rem;
+  border-radius: 0.6rem;
+}
+
+/* Each row wears its Seat's peg colour from the Board, faintly. */
+.play-row-human .play-row-tint {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.play-row-computer .play-row-tint {
+  background: color-mix(in srgb, var(--computer-peg) 20%, transparent);
+}
+
+.play-slot,
+.played-pile {
+  position: relative;
+  z-index: 1;
+}
+
+/* An empty pile leaves a card-sized outline so the row keeps its height. */
+.played-pile {
+  display: block;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 0.45rem;
+  outline: 1px dashed rgba(255, 255, 255, 0.25);
+  outline-offset: -1px;
+}
+
+.played-pile .card {
+  display: block;
+}
+
+.pile-count {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.35rem;
+  min-width: 1.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+/* A sequence can run to eight cards; only on a phone do they need to shrink. */
+@media (max-width: 26rem) {
+  .play-rows {
+    --card-w: 2.75rem;
+    --card-h: 3.8rem;
+  }
 }
 
 .count {
   font-size: 1rem;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .count strong {

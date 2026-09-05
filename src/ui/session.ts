@@ -190,6 +190,8 @@ export type TableModel = {
   readonly starter: Card | null;
   readonly sequence: readonly PlayedCard[];
   readonly count: number;
+  /** How many cards each Seat has played in earlier sequences this Round. */
+  readonly playedPile: PerSeat<number>;
   readonly saidGo: Seat | null;
   readonly lastTally: LastTally | null;
   readonly shows: readonly ShowCounted[];
@@ -211,6 +213,7 @@ const EMPTY: TableModel = {
   starter: null,
   sequence: [],
   count: 0,
+  playedPile: [0, 0],
   saidGo: null,
   lastTally: null,
   shows: [],
@@ -228,6 +231,19 @@ function without(
 ): PerSeat<readonly Card[]> {
   const kept = hands[seat].filter((c) => !cards.some((d) => sameCard(c, d)));
   return withSeat(hands, seat, kept);
+}
+
+/**
+ * The Count resets: the sequence goes face down onto each Seat's pile. The
+ * engine ends a sequence with exactly one of sequence-ended or pegging-ended,
+ * so sweeping on both never counts a card twice.
+ */
+function swept(model: TableModel): TableModel {
+  const playedPile = model.sequence.reduce(
+    (piles, played) => withSeat(piles, played.seat, piles[played.seat] + 1),
+    model.playedPile,
+  );
+  return { ...model, sequence: [], count: 0, playedPile };
 }
 
 function step(model: TableModel, event: GameEvent): TableModel {
@@ -283,9 +299,9 @@ function step(model: TableModel, event: GameEvent): TableModel {
     case 'go':
       return { ...model, saidGo: event.seat };
     case 'sequence-ended':
-      return { ...model, sequence: [], count: 0, saidGo: null };
+      return { ...swept(model), saidGo: null };
     case 'pegging-ended':
-      return { ...model, stage: 'show', sequence: [], count: 0, saidGo: null };
+      return { ...swept(model), stage: 'show', saidGo: null };
     case 'show-counted':
       return {
         ...model,
