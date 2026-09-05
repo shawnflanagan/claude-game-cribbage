@@ -124,3 +124,9 @@ _Avoid_: history, transcript, feed
 **Skunk**:
 A win where the loser has fewer than 91 points. A **Double Skunk** is a win where the loser has fewer than 61.
 _Avoid_: lurch
+
+### Across Games
+
+**Record**:
+The running tally of finished Games between the human and the computer: wins for each Seat, with how many of those were Skunks and Double Skunks. Only a Game that reaches 121 counts; an abandoned Game leaves the Record unchanged. Kept in the browser, shown on the result screen, and cleared only by an explicit reset.
+_Avoid_: stats, history, score, streak
