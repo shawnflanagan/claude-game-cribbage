@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { apply, newGame, sameCard, type Card, type GameEvent } from '../engine';
+import { heuristicOpponent } from './heuristic';
 import { playout, type Playout } from './playout';
 import { randomOpponent } from './random';
 
@@ -23,12 +24,19 @@ function rounds(events: readonly GameEvent[]): GameEvent[][] {
 const sameSet = (a: readonly Card[], b: readonly Card[]) =>
   a.length === b.length && a.every((c) => b.some((d) => sameCard(c, d)));
 
-describe(`invariants over ${String(GAMES)} random Games`, () => {
+describe(`invariants over ${String(GAMES)} Games`, () => {
   let games: Game[] = [];
   beforeAll(() => {
+    // The heuristic opponent takes a Seat in every other Game, so both
+    // opponents are proven never to choose an illegal Action here.
     games = Array.from({ length: GAMES }, (_, i) => ({
       seed: i + 1,
-      ...playout(i + 1, [randomOpponent, randomOpponent]),
+      ...playout(
+        i + 1,
+        i % 2 === 0
+          ? [randomOpponent, heuristicOpponent]
+          : [heuristicOpponent, randomOpponent],
+      ),
     }));
   });
 

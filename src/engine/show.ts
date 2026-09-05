@@ -30,7 +30,7 @@ export function scoreShow(input: ShowInput): Tally {
   ]);
 }
 
-function pick(cards: readonly Card[], mask: number): Card[] {
+function select(cards: readonly Card[], mask: number): Card[] {
   return cards.filter((_, i) => (mask & (1 << i)) !== 0);
 }
 
@@ -45,7 +45,7 @@ function fifteens(cards: readonly Card[]): Combination[] {
       if ((mask & (1 << i)) !== 0) sum += values[i] ?? 0;
     }
     if (sum === 15) {
-      result.push({ kind: 'fifteen', points: 2, cards: pick(cards, mask) });
+      result.push({ kind: 'fifteen', points: 2, cards: select(cards, mask) });
     }
   }
   return result;
@@ -97,7 +97,7 @@ function runs(cards: readonly Card[]): Combination[] {
         !runMasks.some((other) => other !== mask && (other & mask) === mask),
     )
     .map((mask) => {
-      const run = pick(cards, mask);
+      const run = select(cards, mask);
       return { kind: 'run', points: run.length, cards: run };
     });
 }
