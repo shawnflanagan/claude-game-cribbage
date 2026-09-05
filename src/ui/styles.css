@@ -1,0 +1,281 @@
+:root {
+  --felt: #2f6b3a;
+  --felt-dark: #23512c;
+  --paper: #fffdf7;
+  --ink: #1b1b1b;
+  --red: #b3261e;
+  --accent: #f2c14e;
+  --muted: rgba(255, 255, 255, 0.75);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--paper);
+  background: var(--felt-dark);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--felt-dark);
+}
+
+.app {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.top h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.scores {
+  display: flex;
+  gap: 1rem;
+}
+
+.scores strong {
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.table {
+  background: var(--felt);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.seat header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+}
+
+.badge {
+  background: var(--accent);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.card {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 3.2rem;
+  height: 4.4rem;
+  padding: 0.25rem 0.3rem;
+  border-radius: 0.4rem;
+  border: 1px solid #c9c2b0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  text-align: left;
+  cursor: default;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.card-rank {
+  font-size: 1.1rem;
+}
+
+.card-suit {
+  font-size: 1.4rem;
+  align-self: flex-end;
+}
+
+.card-red {
+  color: var(--red);
+}
+
+button.card {
+  cursor: pointer;
+}
+
+button.card:hover:not(:disabled),
+button.card:focus-visible {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.3);
+  outline: 2px solid var(--accent);
+}
+
+button.card:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.card-selected {
+  transform: translateY(-0.5rem);
+  outline: 3px solid var(--accent);
+}
+
+.card-back {
+  background: repeating-linear-gradient(45deg, #5a6fb0 0 4px, #46579a 4px 8px);
+  border-color: #2e3a6b;
+}
+
+.middle {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  text-align: center;
+  min-height: 9rem;
+}
+
+.centre {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.cut {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.play-area {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.count {
+  font-size: 1.1rem;
+}
+
+.count strong {
+  color: var(--accent);
+  font-size: 1.5rem;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.5rem;
+}
+
+.scoring {
+  margin: 0;
+  color: var(--accent);
+}
+
+.action {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quiet {
+  font: inherit;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.hand .action {
+  margin-top: 0.5rem;
+}
+
+.log {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.log h2 {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.log ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.game-over {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 1rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.game-over h2 {
+  margin: 0 0 0.5rem;
+}
+
+.skunk {
+  font-weight: 700;
+  color: var(--red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  button.card:hover:not(:disabled),
+  .card-selected {
+    transition: none;
+    transform: none;
+  }
+}
