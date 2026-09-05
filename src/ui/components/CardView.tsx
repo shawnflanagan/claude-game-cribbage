@@ -25,14 +25,17 @@ type Props = {
   onClick?: () => void;
   disabled?: boolean;
   selected?: boolean;
+  /** Lifted with a glow: part of the Combination being counted out. */
+  lit?: boolean;
 };
 
-export function CardView({ card, onClick, disabled, selected }: Props) {
+export function CardView({ card, onClick, disabled, selected, lit }: Props) {
   const red = card.suit === 'hearts' || card.suit === 'diamonds';
   const className = [
     'card',
     red ? 'card-red' : 'card-black',
     selected === true ? 'card-selected' : '',
+    lit === true ? 'card-lit' : '',
   ]
     .filter(Boolean)
     .join(' ');

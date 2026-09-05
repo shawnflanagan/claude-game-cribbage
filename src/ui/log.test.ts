@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCard, parseCards, type GameEvent } from '../engine';
-import { describeEvent } from './log';
+import { describeCut, describeEvent } from './log';
 
 const human = 0;
 
@@ -132,5 +132,22 @@ describe('Log lines', () => {
     ).toBeNull();
     expect(describeEvent({ type: 'pegging-ended' }, human)).toBeNull();
     expect(describeEvent({ type: 'round-ended', round: 1 }, human)).toBeNull();
+  });
+});
+
+describe('the cut announced on the table', () => {
+  it('names each card in words and who deals', () => {
+    expect(describeCut([parseCard('4H'), parseCard('JS')], 0, 0)).toBe(
+      'You cut a 4, Computer cut a Jack. You deal.',
+    );
+    expect(describeCut([parseCard('AH'), parseCard('8S')], 1, 0)).toBe(
+      'You cut an Ace, Computer cut an 8. Computer deals.',
+    );
+  });
+
+  it('calls a tie', () => {
+    expect(describeCut([parseCard('QH'), parseCard('QS')], null, 0)).toBe(
+      'You cut a Queen, Computer cut a Queen. A tie, cut again.',
+    );
   });
 });

@@ -336,6 +336,15 @@ button.card.card-selected:hover:not(:disabled) {
     0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
 }
 
+/* Part of the Combination being counted out: lifted, with a gold glow. */
+.card-lit {
+  transform: translateY(-0.4rem);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 1rem 0.2rem color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+}
+
 /* Keep the focus ring visible outside the selection ring. */
 button.card.card-selected:focus-visible {
   outline-offset: 5px;
@@ -412,7 +421,8 @@ button.card.card-selected:focus-visible {
   justify-items: center;
   max-width: 100%;
   overflow-x: auto;
-  padding: 0.25rem;
+  /* Room below the rows for the chips that hang off the newest card. */
+  padding: 0.25rem 0.25rem 0.9rem;
 }
 
 .play-row {
@@ -509,6 +519,49 @@ button.card.card-selected:focus-visible {
   font-weight: 600;
 }
 
+/* The running phrase of a Show count, under the Hand being counted. */
+.phrase {
+  margin: 0.5rem 0 0;
+  min-height: 1.4rem;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* One chip per Combination of the latest Pegging play, beside its card. */
+.chips {
+  position: absolute;
+  left: 50%;
+  bottom: -0.55rem;
+  display: flex;
+  gap: 0.2rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.chip {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  animation: chip-lit 1s ease-out;
+}
+
+@keyframes chip-lit {
+  0% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0.9rem 0.25rem var(--accent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: var(--shadow);
+  }
+}
+
 .action {
   font: inherit;
   font-weight: 700;
@@ -591,6 +644,35 @@ button.card.card-selected:focus-visible {
   color: var(--red);
 }
 
+.record {
+  margin: 0.75rem 0 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.record p {
+  margin: 0;
+}
+
+.record-lead {
+  font-weight: 700;
+}
+
+.record-skunks {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.game-over .action + .quiet {
+  margin-left: 0.5rem;
+}
+
+/* A quiet button on the paper-white result card. */
+.quiet-dark {
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
 /* Board */
 .board {
   background: var(--wood);
@@ -649,6 +731,15 @@ button.card.card-selected:focus-visible {
   button.card.card-selected:hover:not(:disabled) {
     transition: none;
     transform: none;
+  }
+
+  /* The glow still marks the counted cards; only the lift and pulse go. */
+  .card-lit {
+    transform: none;
+  }
+
+  .chip {
+    animation: none;
   }
 
   .peg {
