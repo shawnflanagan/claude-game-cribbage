@@ -1,3 +1,5 @@
 dist
 pnpm-lock.yaml
 .claude
+test-results
+playwright-report

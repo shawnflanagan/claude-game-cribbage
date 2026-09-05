@@ -1,7 +1,9 @@
 :root {
-  --felt: #2f6b3a;
-  --felt-dark: #23512c;
+  color-scheme: light dark;
+  --felt: #285a31;
+  --felt-deep: #1e4726;
   --felt-inset: rgba(0, 0, 0, 0.18);
+  --table-edge: rgba(255, 255, 255, 0.08);
   --paper: #fffdf7;
   --ink: #1b1b1b;
   --red: #b3261e;
@@ -10,11 +12,25 @@
   --wood: #5b3a1e;
   --wood-dark: #2b1a0c;
   --wood-darker: #1a0f06;
+  --board-edge: rgba(0, 0, 0, 0.25);
+  --peg-edge: rgba(0, 0, 0, 0.5);
   --computer-peg: #8fb4ff;
+  --card-edge: #d6cfbd;
+  --court-tint: rgba(0, 0, 0, 0.03);
+  --card-back: #46579a;
+  --card-back-edge: #2e3a6b;
+  --card-back-lattice: rgba(255, 255, 255, 0.22);
+  --pile-outline: rgba(255, 255, 255, 0.25);
+  --count-pill: rgba(0, 0, 0, 0.3);
+  --log-bg: rgba(0, 0, 0, 0.28);
+  --paper-divider: rgba(0, 0, 0, 0.12);
+  --paper-edge: rgba(0, 0, 0, 0.35);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --lift-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+  --glow-strength: 70%;
   --radius: 0.75rem;
-  --card-w: 3.4rem;
-  --card-h: 4.7rem;
+  --card-w: 3.75rem;
+  --card-h: 5.2rem;
   font-family:
     system-ui,
     -apple-system,
@@ -22,15 +38,46 @@
     Roboto,
     sans-serif;
   color: var(--paper);
-  background: var(--felt-dark);
+  background: var(--felt-deep);
   line-height: 1.35;
 }
 
-/* Six cards plus gaps must fit a 390px phone in one row; 48px still taps well. */
+/*
+ * Dark mode follows the system alone. The table, board, and panels go darker
+ * and the peg colours brighten for contrast; card faces stay paper-white so
+ * cards still look like cards.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --felt: #234b2c;
+    --felt-deep: #142a19;
+    --felt-inset: rgba(0, 0, 0, 0.32);
+    --table-edge: rgba(255, 255, 255, 0.06);
+    --accent: #f6cd66;
+    /* Slightly less white: the darker felt already lifts it well past AA. */
+    --muted: rgba(255, 255, 255, 0.74);
+    --wood: #43301c;
+    --wood-dark: #1c1108;
+    --wood-darker: #0e0803;
+    --board-edge: rgba(0, 0, 0, 0.45);
+    --computer-peg: #a4c4ff;
+    --card-back: #3a4a86;
+    --card-back-edge: #222c55;
+    --card-back-lattice: rgba(255, 255, 255, 0.16);
+    --pile-outline: rgba(255, 255, 255, 0.2);
+    --count-pill: rgba(0, 0, 0, 0.5);
+    --log-bg: rgba(0, 0, 0, 0.45);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    --lift-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.6);
+    --glow-strength: 55%;
+  }
+}
+
+/* Six cards plus gaps must fit a 390px phone in one row; 52px still taps well. */
 @media (max-width: 26rem) {
   :root {
-    --card-w: 3rem;
-    --card-h: 4.2rem;
+    --card-w: 3.25rem;
+    --card-h: 4.5rem;
   }
 }
 
@@ -38,10 +85,51 @@
   box-sizing: border-box;
 }
 
+/*
+ * Motion (ADR 0004): only cards take part in a view transition. The page
+ * itself is not snapshotted, so text updates at once while each named card
+ * glides from where it was to where it is.
+ */
+:root {
+  view-transition-name: none;
+}
+
+.card {
+  view-transition-class: card;
+}
+
+::view-transition-group(.card) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* A card with nowhere to come from is dealt in; one with nowhere to go fades. */
+::view-transition-new(.card):only-child {
+  animation: 240ms ease-out both card-enter;
+}
+
+::view-transition-old(.card):only-child {
+  animation: 180ms ease-in both card-leave;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-1.25rem) scale(0.92);
+  }
+}
+
+@keyframes card-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--felt-dark);
+  background: var(--felt-deep);
 }
 
 /* Layout: one column on a phone, table and Log side by side when wide. */
@@ -170,7 +258,7 @@ body {
   padding: 0.75rem;
   display: grid;
   gap: 0.75rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--table-edge);
 }
 
 .seat header {
@@ -203,17 +291,15 @@ body {
   gap: 0.4rem;
 }
 
-/* Cards */
+/* Cards: drawn with text only, sized by the tokens above. */
 .card {
   position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: block;
   width: var(--card-w);
   height: var(--card-h);
-  padding: 0.3rem 0.35rem;
+  padding: 0;
   border-radius: 0.45rem;
-  border: 1px solid #d6cfbd;
+  border: 1px solid var(--card-edge);
   background: var(--paper);
   color: var(--ink);
   font: inherit;
@@ -228,17 +314,84 @@ body {
     opacity 140ms ease;
 }
 
-.card-rank {
-  font-size: 1.15rem;
-}
-
-.card-suit {
-  font-size: 1.6rem;
-  align-self: flex-end;
-}
-
 .card-red {
   color: var(--red);
+}
+
+/* Corner indices: rank over suit, the bottom one turned like a real card. */
+.card-index {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: calc(var(--card-w) * 0.22);
+  line-height: 1;
+}
+
+.card-index-bottom {
+  top: auto;
+  left: auto;
+  right: 0.2rem;
+  bottom: 0.15rem;
+  transform: rotate(180deg);
+}
+
+/* Pips sit on a grid inset from the indices; rows are percentages. */
+.card-pips {
+  position: absolute;
+  inset: calc(var(--card-h) * 0.25) calc(var(--card-w) * 0.34);
+  font-size: calc(var(--card-w) * 0.24);
+}
+
+.card-pip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
+
+.card-pip-left {
+  left: 0;
+}
+
+.card-pip-centre {
+  left: 50%;
+}
+
+.card-pip-right {
+  left: 100%;
+}
+
+.card-pip-inverted {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.card-pips-ace {
+  font-size: calc(var(--card-w) * 0.6);
+}
+
+/* Court cards: a framed letter with the suit under it, no picture. */
+.card-court {
+  position: absolute;
+  inset: calc(var(--card-h) * 0.2) calc(var(--card-w) * 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.2rem;
+  background: var(--court-tint);
+}
+
+.card-court-letter {
+  font-size: calc(var(--card-w) * 0.42);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.card-court-suit {
+  font-size: calc(var(--card-w) * 0.26);
 }
 
 button.card {
@@ -247,7 +400,7 @@ button.card {
 
 button.card:hover:not(:disabled) {
   transform: translateY(-0.25rem);
-  box-shadow: 0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+  box-shadow: var(--lift-shadow);
 }
 
 button.card:focus-visible,
@@ -268,7 +421,20 @@ button.card.card-selected:hover:not(:disabled) {
   transform: translateY(-0.6rem);
   box-shadow:
     0 0 0 3px var(--accent),
-    0 0.35rem 0.6rem rgba(0, 0, 0, 0.35);
+    var(--lift-shadow);
+}
+
+/* Part of the Combination being counted out: lifted, with a gold glow. The
+   lift is instant in the DOM so the view transition, not a CSS transition,
+   carries the card up. */
+.card-lit {
+  transition: none;
+  transform: translateY(-0.4rem);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 1rem 0.2rem
+      color-mix(in srgb, var(--accent) var(--glow-strength), transparent),
+    var(--lift-shadow);
 }
 
 /* Keep the focus ring visible outside the selection ring. */
@@ -276,9 +442,26 @@ button.card.card-selected:focus-visible {
   outline-offset: 5px;
 }
 
+/* Backs: a lattice inside a white frame, unmistakably face down. */
 .card-back {
-  background: repeating-linear-gradient(45deg, #5a6fb0 0 4px, #46579a 4px 8px);
-  border-color: #2e3a6b;
+  border-color: var(--card-back-edge);
+  background:
+    repeating-linear-gradient(
+        45deg,
+        transparent 0 5px,
+        var(--card-back-lattice) 5px 6px
+      )
+      padding-box,
+    repeating-linear-gradient(
+        -45deg,
+        transparent 0 5px,
+        var(--card-back-lattice) 5px 6px
+      )
+      padding-box,
+    var(--card-back) padding-box;
+  box-shadow:
+    inset 0 0 0 3px var(--paper),
+    var(--shadow);
 }
 
 /* Middle of the table */
@@ -318,15 +501,104 @@ button.card.card-selected:focus-visible {
   justify-content: center;
 }
 
-.play-area {
+/*
+ * Two Pegging rows on one grid: column 1 is each Seat's pile, the rest the
+ * sequence in play order. Rows use display: contents so the grid places
+ * their children directly.
+ */
+.play-rows {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.35rem 0.4rem;
+  align-items: center;
   justify-items: center;
+  max-width: 100%;
+  overflow-x: auto;
+  /* Room below the rows for the chips that hang off the newest card. */
+  padding: 0.25rem 0.25rem 0.9rem;
+}
+
+.play-row {
+  display: contents;
+}
+
+.play-row-tint {
+  display: block;
+  align-self: stretch;
+  justify-self: stretch;
+  margin: -0.2rem -0.25rem;
+  border-radius: 0.6rem;
+}
+
+/* Each row wears its Seat's peg colour from the Board, faintly. */
+.play-row-human .play-row-tint {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.play-row-computer .play-row-tint {
+  background: color-mix(in srgb, var(--computer-peg) 20%, transparent);
+}
+
+.play-slot,
+.played-pile {
+  position: relative;
+  z-index: 1;
+}
+
+/* An empty pile leaves a card-sized outline so the row keeps its height. */
+.played-pile {
+  display: block;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 0.45rem;
+  outline: 1px dashed var(--pile-outline);
+  outline-offset: -1px;
+}
+
+/* Swept cards stack face down, each nudged a hair so the pile looks thick. */
+.played-pile .card {
+  position: absolute;
+  inset: 0;
+}
+
+.played-pile .card:nth-child(2) {
+  transform: translate(1px, -1px);
+}
+
+.played-pile .card:nth-child(3) {
+  transform: translate(2px, -2px);
+}
+
+.played-pile .card:nth-child(4) {
+  transform: translate(3px, -3px);
+}
+
+.pile-count {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.35rem;
+  min-width: 1.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+/* A sequence can run to eight cards; only on a phone do they need to shrink. */
+@media (max-width: 26rem) {
+  .play-rows {
+    --card-w: 2.75rem;
+    --card-h: 3.8rem;
+  }
 }
 
 .count {
   font-size: 1rem;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .count strong {
@@ -335,7 +607,7 @@ button.card.card-selected:focus-visible {
   margin-left: 0.25rem;
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--count-pill);
   color: var(--accent);
   font-size: 1.5rem;
   font-variant-numeric: tabular-nums;
@@ -351,6 +623,49 @@ button.card.card-selected:focus-visible {
   margin: 0;
   color: var(--accent);
   font-weight: 600;
+}
+
+/* The running phrase of a Show count, under the Hand being counted. */
+.phrase {
+  margin: 0.5rem 0 0;
+  min-height: 1.4rem;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* One chip per Combination of the latest Pegging play, beside its card. */
+.chips {
+  position: absolute;
+  left: 50%;
+  bottom: -0.55rem;
+  display: flex;
+  gap: 0.2rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.chip {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  animation: chip-lit 1s ease-out;
+}
+
+@keyframes chip-lit {
+  0% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0.9rem 0.25rem var(--accent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: var(--shadow);
+  }
 }
 
 .action {
@@ -382,7 +697,7 @@ button.card.card-selected:focus-visible {
 
 /* Log */
 .log {
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--log-bg);
   border-radius: var(--radius);
   padding: 0.6rem 0.8rem;
   max-height: 14rem;
@@ -435,12 +750,41 @@ button.card.card-selected:focus-visible {
   color: var(--red);
 }
 
+.record {
+  margin: 0.75rem 0 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--paper-divider);
+}
+
+.record p {
+  margin: 0;
+}
+
+.record-lead {
+  font-weight: 700;
+}
+
+.record-skunks {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.game-over .action + .quiet {
+  margin-left: 0.5rem;
+}
+
+/* A quiet button on the paper-white result card. */
+.quiet-dark {
+  color: var(--ink);
+  border-color: var(--paper-edge);
+}
+
 /* Board */
 .board {
   background: var(--wood);
   border-radius: var(--radius);
   padding: 0.5rem 0.75rem;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px var(--board-edge);
 }
 
 .board svg {
@@ -466,7 +810,7 @@ button.card.card-selected:focus-visible {
 }
 
 .peg circle {
-  stroke: rgba(0, 0, 0, 0.5);
+  stroke: var(--peg-edge);
   stroke-width: 0.8;
 }
 
@@ -493,6 +837,22 @@ button.card.card-selected:focus-visible {
   button.card.card-selected:hover:not(:disabled) {
     transition: none;
     transform: none;
+  }
+
+  /* The glow still marks the counted cards; only the lift and pulse go. */
+  .card-lit {
+    transform: none;
+  }
+
+  .chip {
+    animation: none;
+  }
+
+  /* No transitions are started under reduced motion; this covers any in flight. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
   }
 
   .peg {

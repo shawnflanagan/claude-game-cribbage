@@ -82,12 +82,22 @@ export function PeggingHand({ cards, legal, onPlay }: PeggingProps) {
   );
 }
 
-export function ShownHand({ cards }: { cards: readonly Card[] }) {
+type ShownProps = {
+  cards: readonly Card[];
+  /** Cards to lift with a glow while their Combination is counted. */
+  lit?: readonly Card[];
+};
+
+export function ShownHand({ cards, lit = [] }: ShownProps) {
   return (
     <div className="hand">
       <div className="cards">
         {cards.map((card) => (
-          <CardView key={cardKey(card)} card={card} />
+          <CardView
+            key={cardKey(card)}
+            card={card}
+            lit={lit.some((c) => sameCard(c, card))}
+          />
         ))}
       </div>
     </div>
@@ -99,7 +109,7 @@ export function HiddenHand({ size }: { size: number }) {
     <div className="hand">
       <div className="cards">
         {Array.from({ length: size }, (_, i) => (
-          <CardBack key={i} />
+          <CardBack key={i} slot={`hidden-${String(i)}`} />
         ))}
       </div>
     </div>

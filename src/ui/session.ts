@@ -12,6 +12,7 @@ import {
   type GameEvent,
   type GameResult,
   type GameState,
+  type NewGameOptions,
   type PerSeat,
   type PlayedCard,
   type Rng,
@@ -30,23 +31,36 @@ export type Session = {
   /** Kept so the Game can be saved and replayed (ADR 0002). */
   readonly seed: number;
   readonly human: Seat;
+  /** Where the scores began: zero, or a handicap. Replayed with the seed. */
+  readonly startingScores: PerSeat<number>;
   readonly engine: GameState;
   readonly events: readonly GameEvent[];
   /** Every accepted Action so far: with the seed, the whole Game (ADR 0002). */
   readonly actions: readonly Action[];
   readonly revealed: number;
+  /**
+   * How many Combinations of the latest revealed Show count have been counted
+   * out so far: the cursor's position inside that one Event (ADR 0003).
+   */
+  readonly counted: number;
   readonly opponentRng: Rng;
 };
 
-export function startSession(seed: number, human: Seat = 0): Session {
-  const { state, events } = newGame(seed);
+export function startSession(
+  seed: number,
+  human: Seat = 0,
+  options: NewGameOptions = {},
+): Session {
+  const { state, events } = newGame(seed, options);
   return {
     seed,
     human,
+    startingScores: options.scores ?? [0, 0],
     engine: state,
     events,
     actions: [],
     revealed: 0,
+    counted: 0,
     // The opponent's stream is derived from the seed so a Game replays.
     opponentRng: createRng(seed ^ 0x5eed),
   };
@@ -92,13 +106,34 @@ export function computerAct(
   };
 }
 
+/**
+ * One step of the presentation cursor: the next Combination of a Show count
+ * still being counted out, otherwise the next Event.
+ */
 export function reveal(session: Session): Session {
-  if (session.revealed >= session.events.length) return session;
-  return { ...session, revealed: session.revealed + 1 };
+  if (session.counted < combinationsToCount(session)) {
+    return { ...session, counted: session.counted + 1 };
+  }
+  const next = session.events[session.revealed];
+  if (next === undefined) return session;
+  // Bookkeeping rides along with the Show count it follows, which stays counted.
+  const counted = isBookkeeping(next) ? session.counted : 0;
+  return { ...session, revealed: session.revealed + 1, counted };
 }
 
 export function revealAll(session: Session): Session {
-  return { ...session, revealed: session.events.length };
+  const revealed = session.events.length;
+  return {
+    ...session,
+    revealed,
+    counted: combinationsToCount({ ...session, revealed }),
+  };
+}
+
+/** How many Combinations the latest visible Show count has to count out. */
+function combinationsToCount(session: Session): number {
+  const last = lastVisible(session);
+  return last?.type === 'show-counted' ? last.tally.combinations.length : 0;
 }
 
 export function caughtUp(session: Session): boolean {
@@ -109,6 +144,12 @@ export type Pause =
   { kind: 'idle' } | { kind: 'after'; ms: number } | { kind: 'continue' };
 
 export const COMPUTER_MOVE_MS = 600;
+/** Between Combinations while a Show count is counted out. */
+export const SHOW_STEP_MS = 700;
+/** A Pegging Tally stays lit this long before the next card. */
+export const TALLY_LINGER_MS = 1000;
+/** The cut cards stay up this long, with the Dealer announced, before the deal. */
+export const CUT_LINGER_MS = COMPUTER_MOVE_MS + 1500;
 
 /** Events nobody sees on their own: they ride along with the one before. */
 function isBookkeeping(event: GameEvent): boolean {
@@ -121,11 +162,18 @@ function isBookkeeping(event: GameEvent): boolean {
  * they press Continue after reading a Show count.
  */
 export function nextPause(session: Session): Pause {
+  if (session.counted < combinationsToCount(session)) {
+    return { kind: 'after', ms: SHOW_STEP_MS };
+  }
   const next = session.events[session.revealed];
   if (next === undefined) return { kind: 'idle' };
   if (isBookkeeping(next)) return { kind: 'after', ms: 0 };
-  if (lastVisible(session)?.type === 'show-counted')
-    return { kind: 'continue' };
+  const last = lastVisible(session);
+  if (last?.type === 'show-counted') return { kind: 'continue' };
+  if (last?.type === 'tally') return { kind: 'after', ms: TALLY_LINGER_MS };
+  if (last?.type === 'cut-for-deal' && next.type === 'dealt') {
+    return { kind: 'after', ms: CUT_LINGER_MS };
+  }
   return { kind: 'after', ms: delayBefore(next, session.human) };
 }
 
@@ -145,11 +193,12 @@ function delayBefore(event: GameEvent, human: Seat): number {
       return event.seat === human ? 0 : COMPUTER_MOVE_MS;
     case 'go':
       return event.seat === human ? COMPUTER_MOVE_MS / 2 : COMPUTER_MOVE_MS;
+    case 'tally':
+      return COMPUTER_MOVE_MS / 2;
     case 'cut-for-deal':
     case 'dealt':
     case 'starter-cut':
     case 'heels':
-    case 'tally':
     case 'show-counted':
       return COMPUTER_MOVE_MS;
     case 'sequence-ended':
@@ -183,16 +232,20 @@ export type TableModel = {
   readonly hands: PerSeat<readonly Card[]>;
   /** The four cards each Seat kept for the Show, known once the Starter is cut. */
   readonly kept: PerSeat<readonly Card[]>;
-  readonly discarded: PerSeat<boolean>;
-  readonly cribSize: number;
+  /** What each Seat sent to the Crib; the Computer's are never shown face up. */
+  readonly discards: PerSeat<readonly Card[]>;
   /** The Crib's cards, once the Show reveals them. */
   readonly crib: readonly Card[] | null;
   readonly starter: Card | null;
   readonly sequence: readonly PlayedCard[];
   readonly count: number;
+  /** The cards each Seat played in earlier sequences this Round, face down. */
+  readonly playedPile: PerSeat<readonly Card[]>;
   readonly saidGo: Seat | null;
   readonly lastTally: LastTally | null;
   readonly shows: readonly ShowCounted[];
+  /** Combinations of the latest Show count counted out so far. */
+  readonly counted: number;
   readonly result: GameResult | null;
 };
 
@@ -205,20 +258,22 @@ const EMPTY: TableModel = {
   previousScores: [0, 0],
   hands: [[], []],
   kept: [[], []],
-  discarded: [false, false],
-  cribSize: 0,
+  discards: [[], []],
   crib: null,
   starter: null,
   sequence: [],
   count: 0,
+  playedPile: [[], []],
   saidGo: null,
   lastTally: null,
   shows: [],
+  counted: 0,
   result: null,
 };
 
 export function present(session: Session): TableModel {
-  return session.events.slice(0, session.revealed).reduce(step, EMPTY);
+  const model = session.events.slice(0, session.revealed).reduce(step, EMPTY);
+  return { ...model, counted: session.counted };
 }
 
 function without(
@@ -228,6 +283,30 @@ function without(
 ): PerSeat<readonly Card[]> {
   const kept = hands[seat].filter((c) => !cards.some((d) => sameCard(c, d)));
   return withSeat(hands, seat, kept);
+}
+
+/**
+ * The Count resets: the sequence goes face down onto each Seat's pile. The
+ * engine ends a sequence with exactly one of sequence-ended or pegging-ended,
+ * so sweeping on both never counts a card twice.
+ */
+function swept(model: TableModel): TableModel {
+  const playedPile = model.sequence.reduce(
+    (piles, played) =>
+      withSeat(piles, played.seat, [...piles[played.seat], played.card]),
+    model.playedPile,
+  );
+  return {
+    ...model,
+    sequence: [],
+    count: 0,
+    playedPile,
+    lastTally: withoutPeggingTally(model.lastTally),
+  };
+}
+
+function withoutPeggingTally(tally: LastTally | null): LastTally | null {
+  return tally?.source === 'pegging' ? null : tally;
 }
 
 function step(model: TableModel, event: GameEvent): TableModel {
@@ -253,8 +332,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
       return {
         ...model,
         hands: without(model.hands, event.seat, event.cards),
-        discarded: withSeat(model.discarded, event.seat, true),
-        cribSize: model.cribSize + event.cards.length,
+        discards: withSeat(model.discards, event.seat, event.cards),
       };
     case 'starter-cut':
       return {
@@ -274,6 +352,8 @@ function step(model: TableModel, event: GameEvent): TableModel {
         hands: without(model.hands, event.seat, [event.card]),
         sequence: [...model.sequence, { seat: event.seat, card: event.card }],
         count: event.count,
+        // A Pegging Tally belongs to the card before this one.
+        lastTally: withoutPeggingTally(model.lastTally),
       };
     case 'tally':
       return {
@@ -283,9 +363,9 @@ function step(model: TableModel, event: GameEvent): TableModel {
     case 'go':
       return { ...model, saidGo: event.seat };
     case 'sequence-ended':
-      return { ...model, sequence: [], count: 0, saidGo: null };
+      return { ...swept(model), saidGo: null };
     case 'pegging-ended':
-      return { ...model, stage: 'show', sequence: [], count: 0, saidGo: null };
+      return { ...swept(model), stage: 'show', saidGo: null };
     case 'show-counted':
       return {
         ...model,

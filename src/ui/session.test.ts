@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { seatsToAct, viewFor, type Action } from '../engine';
+import {
+  makeTally,
+  parseCard,
+  parseCards,
+  seatsToAct,
+  viewFor,
+  type Action,
+  type GameEvent,
+} from '../engine';
 import { heuristicOpponent, randomOpponent } from '../opponent';
 import {
   caughtUp,
@@ -29,6 +37,23 @@ function untilPegging(start: Session): Session {
     session = computerAct(session, randomOpponent) ?? session;
   }
   return revealAll(session);
+}
+
+/** Pegs the whole Round out, the human always playing their first legal card. */
+function pegOut(start: Session): Session {
+  let session = untilPegging(start);
+  for (let i = 0; i < 40 && session.engine.phase === 'pegging'; i++) {
+    const turn = viewFor(session.engine, 0).pegging?.turn;
+    if (turn === undefined) break;
+    if (turn === HUMAN) {
+      const card = viewFor(session.engine, HUMAN).pegging?.legal[0];
+      if (card === undefined) break;
+      session = humanAct(session, { type: 'play', seat: HUMAN, card });
+    } else {
+      session = computerAct(session, randomOpponent) ?? session;
+    }
+  }
+  return session;
 }
 
 describe('session: engine ahead, presentation behind', () => {
@@ -96,8 +121,8 @@ describe('session: engine ahead, presentation behind', () => {
     const start = revealAll(startSession(7));
     const model = present(revealAll(discardFirstTwo(start)));
     expect(model.hands[HUMAN]).toHaveLength(4);
-    expect(model.discarded[HUMAN]).toBe(true);
-    expect(model.cribSize).toBe(2);
+    expect(model.discards[HUMAN]).toHaveLength(2);
+    expect(model.discards[1]).toHaveLength(0);
   });
 
   it('presents the Starter, the Count, and the played cards during Pegging', () => {
@@ -109,22 +134,11 @@ describe('session: engine ahead, presentation behind', () => {
     expect(model.starter).toEqual(session.engine.starter);
     expect(model.count).toBe(0);
     expect(model.sequence).toEqual([]);
-    expect(model.cribSize).toBe(4);
+    expect(model.discards.map((d) => d.length)).toEqual([2, 2]);
   });
 
   it('presents the engine scores once caught up', () => {
-    let session = untilPegging(startSession(7));
-    for (let i = 0; i < 40 && session.engine.round === 1; i++) {
-      const turn = viewFor(session.engine, 0).pegging?.turn;
-      if (turn === undefined) break;
-      if (turn === HUMAN) {
-        const card = viewFor(session.engine, HUMAN).pegging?.legal[0];
-        if (card === undefined) break;
-        session = humanAct(session, { type: 'play', seat: HUMAN, card });
-      } else {
-        session = computerAct(session, randomOpponent) ?? session;
-      }
-    }
+    const session = pegOut(startSession(7));
     const model = present(revealAll(session));
     expect(model.scores).toEqual(session.engine.scores);
     expect(model.scores[0] + model.scores[1]).toBeGreaterThan(0);
@@ -151,6 +165,14 @@ describe('session: engine ahead, presentation behind', () => {
     }
     expect(present(session).stage).toBe('show');
     expect(present(session).shows).toHaveLength(1);
+    // It is counted out one Combination at a time before anything else.
+    const combinations = present(session).shows[0]?.tally.combinations ?? [];
+    for (let i = 0; i < combinations.length; i++) {
+      expect(present(session).counted).toBe(i);
+      expect(nextPause(session)).toEqual({ kind: 'after', ms: 700 });
+      session = reveal(session);
+    }
+    expect(present(session).counted).toBe(combinations.length);
     // Its scored Event rides along without a press, then Continue is needed.
     if (session.events[session.revealed]?.type === 'scored') {
       expect(nextPause(session)).toEqual({ kind: 'after', ms: 0 });
@@ -273,5 +295,217 @@ describe('session: back pegs', () => {
     const model = present(revealAll(startSession(7)));
     expect(model.scores).toEqual([0, 0]);
     expect(model.previousScores).toEqual([0, 0]);
+  });
+});
+
+describe('session: played piles', () => {
+  const play = (seat: 0 | 1, card: string, count: number): GameEvent => ({
+    type: 'card-played',
+    seat,
+    card: parseCard(card),
+    count,
+  });
+
+  /** A Round with two Count resets before Pegging ends, then the next deal. */
+  const round: readonly GameEvent[] = [
+    {
+      type: 'dealt',
+      dealer: 1,
+      round: 1,
+      hands: [parseCards('5H 6H 7H 8H'), parseCards('5S 6S 7S 8S')],
+    },
+    { type: 'starter-cut', card: parseCard('KD') },
+    play(0, '8H', 8),
+    play(1, '8S', 16),
+    play(0, '7H', 23),
+    play(1, '7S', 30),
+    { type: 'sequence-ended', leader: 0 },
+    play(0, '6H', 6),
+    play(1, '6S', 12),
+    play(0, '5H', 17),
+    { type: 'sequence-ended', leader: 1 },
+    play(1, '5S', 5),
+    { type: 'pegging-ended' },
+    {
+      type: 'dealt',
+      dealer: 0,
+      round: 2,
+      hands: [parseCards('AH 2H 3H 4H'), parseCards('AS 2S 3S 4S')],
+    },
+  ];
+
+  function presentEvents(events: readonly GameEvent[]) {
+    return present({ ...startSession(1), events, revealed: events.length });
+  }
+
+  it('starts every Round with both piles empty and the sequence bare', () => {
+    const model = presentEvents(round.slice(0, 2));
+    expect(model.playedPile).toEqual([[], []]);
+    expect(model.sequence).toEqual([]);
+  });
+
+  it("sweeps each Seat's played cards into its pile at every Count reset", () => {
+    const before = presentEvents(round.slice(0, 6));
+    expect(before.sequence).toHaveLength(4);
+    expect(before.playedPile).toEqual([[], []]);
+
+    const first = presentEvents(round.slice(0, 7));
+    expect(first.sequence).toEqual([]);
+    expect(first.count).toBe(0);
+    expect(first.playedPile).toEqual([
+      parseCards('8H 7H'),
+      parseCards('8S 7S'),
+    ]);
+
+    const second = presentEvents(round.slice(0, 11));
+    expect(second.playedPile.map((pile) => pile.length)).toEqual([4, 3]);
+  });
+
+  it('holds all eight cards across the two piles once Pegging ends', () => {
+    const model = presentEvents(round.slice(0, 13));
+    expect(model.stage).toBe('show');
+    expect(model.sequence).toEqual([]);
+    expect(model.playedPile.map((pile) => pile.length)).toEqual([4, 4]);
+  });
+
+  it('empties both piles when the next Round deals', () => {
+    expect(presentEvents(round).playedPile).toEqual([[], []]);
+  });
+
+  it('matches what the engine actually plays', () => {
+    const session = pegOut(startSession(7));
+    const end = session.events.findIndex((e) => e.type === 'pegging-ended');
+    expect(end).toBeGreaterThan(0);
+    expect(
+      present({ ...session, revealed: end + 1 }).playedPile.map(
+        (p) => p.length,
+      ),
+    ).toEqual([4, 4]);
+  });
+});
+
+describe('session: pacing inside and around Events', () => {
+  const staged = (events: readonly GameEvent[], revealed: number): Session => ({
+    ...startSession(1),
+    events,
+    revealed,
+    counted: 0,
+  });
+  const cut: GameEvent = {
+    type: 'cut-for-deal',
+    cuts: [parseCard('4H'), parseCard('JS')],
+    dealer: 0,
+  };
+  const dealt: GameEvent = {
+    type: 'dealt',
+    dealer: 0,
+    round: 1,
+    hands: [parseCards('5H 6H 7H 8H 9H TH'), parseCards('5S 6S 7S 8S 9S TS')],
+  };
+  const played: GameEvent = {
+    type: 'card-played',
+    seat: 1,
+    card: parseCard('5S'),
+    count: 15,
+  };
+  const tally: GameEvent = {
+    type: 'tally',
+    seat: 1,
+    tally: makeTally([
+      { kind: 'fifteen', points: 2, cards: parseCards('TH 5S') },
+    ]),
+  };
+  const next: GameEvent = {
+    type: 'card-played',
+    seat: 0,
+    card: parseCard('6H'),
+    count: 21,
+  };
+
+  it('lets the cut cards linger with the Dealer announced before dealing', () => {
+    expect(nextPause(staged([cut, dealt], 1))).toEqual({
+      kind: 'after',
+      ms: 2100,
+    });
+  });
+
+  it('drops a Pegging Tally once the next card lands, so chips never move', () => {
+    const withTally = present(staged([played, tally, next], 2));
+    expect(withTally.lastTally?.source).toBe('pegging');
+    const afterNext = present(staged([played, tally, next], 3));
+    expect(afterNext.lastTally).toBeNull();
+  });
+
+  it('shows a Pegging Tally soon after its card and lets it linger', () => {
+    expect(nextPause(staged([played, tally, next], 1))).toEqual({
+      kind: 'after',
+      ms: 300,
+    });
+    expect(nextPause(staged([played, tally, next], 2))).toEqual({
+      kind: 'after',
+      ms: 1000,
+    });
+  });
+
+  it('counts a Show out one Combination per step, then scores, then waits', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'hand',
+      cards: parseCards('5H 5S 6D JC'),
+      tally: makeTally([
+        { kind: 'fifteen', points: 2, cards: parseCards('5H JC') },
+        { kind: 'pair', points: 2, cards: parseCards('5H 5S') },
+      ]),
+    };
+    const scored: GameEvent = {
+      type: 'scored',
+      seat: 0,
+      points: 4,
+      scores: [4, 0],
+    };
+    const nextShow: GameEvent = {
+      ...show,
+      seat: 1,
+      cards: parseCards('2H 4S 6D KC'),
+    };
+    let session = staged([show, scored, nextShow], 1);
+    expect(present(session).counted).toBe(0);
+    expect(nextPause(session)).toEqual({ kind: 'after', ms: 700 });
+    session = reveal(session);
+    expect(present(session).counted).toBe(1);
+    expect(present(session).scores).toEqual([0, 0]);
+    session = reveal(session);
+    expect(present(session).counted).toBe(2);
+    expect(nextPause(session)).toEqual({ kind: 'after', ms: 0 });
+    session = reveal(session);
+    expect(present(session).scores).toEqual([4, 0]);
+    expect(nextPause(session)).toEqual({ kind: 'continue' });
+  });
+
+  it('needs no counting steps for a Hand worth nothing', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'hand',
+      cards: parseCards('2H 4S 6D KC'),
+      tally: makeTally([]),
+    };
+    const session = staged([show], 1);
+    expect(nextPause(session)).toEqual({ kind: 'idle' });
+    expect(present(session).counted).toBe(0);
+  });
+
+  it('is fully counted once everything is revealed at once', () => {
+    const show: GameEvent = {
+      type: 'show-counted',
+      seat: 0,
+      source: 'crib',
+      cards: parseCards('5H 5S 6D JC'),
+      tally: makeTally([
+        { kind: 'fifteen', points: 2, cards: parseCards('5H JC') },
+      ]),
+    };
+    expect(revealAll(staged([show], 0)).counted).toBe(1);
   });
 });
