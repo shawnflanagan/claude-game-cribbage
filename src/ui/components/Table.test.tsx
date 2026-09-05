@@ -10,6 +10,7 @@ const showModel: TableModel = {
   dealer: 1,
   cuts: null,
   scores: [4, 0],
+  previousScores: [0, 0],
   hands: [[], []],
   kept: [parseCards('5H 5S 6D JC'), parseCards('2H 3S 8D KC')],
   discarded: [true, true],

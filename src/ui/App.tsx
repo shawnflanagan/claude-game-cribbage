@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { otherSeat } from '../engine';
 import { heuristicOpponent } from '../opponent';
+import { Board } from './components/Board';
 import { GameOver } from './components/GameOver';
 import { Log } from './components/Log';
 import { Table } from './components/Table';
@@ -51,6 +52,11 @@ export function App({
           New game
         </button>
       </header>
+      <Board
+        scores={[model.scores[0], model.scores[1]]}
+        previous={[model.previousScores[0], model.previousScores[1]]}
+        human={human}
+      />
       {model.stage === 'over' && model.result !== null ? (
         <GameOver result={model.result} human={human} onNewGame={startNew} />
       ) : null}

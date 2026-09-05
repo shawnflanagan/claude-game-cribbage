@@ -271,11 +271,64 @@ button.card:disabled {
   color: var(--red);
 }
 
+.board {
+  background: #5b3a1e;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hole {
+  fill: #2b1a0c;
+}
+
+.hole-game {
+  fill: #1a0f06;
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.skunk-line {
+  stroke: var(--paper);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.peg circle {
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 0.8;
+}
+
+.track-0 .peg circle {
+  fill: var(--accent);
+}
+
+.track-1 .peg circle {
+  fill: #8fb4ff;
+}
+
+.peg-back circle {
+  opacity: 0.8;
+}
+
+.peg {
+  transition: transform 300ms ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card,
   button.card:hover:not(:disabled),
   .card-selected {
     transition: none;
     transform: none;
+  }
+
+  .peg {
+    transition: none;
   }
 }

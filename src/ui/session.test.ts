@@ -243,3 +243,34 @@ describe('session: engine ahead, presentation behind', () => {
     expect(withComputer?.actions[1]?.seat).toBe(1);
   });
 });
+
+describe('session: back pegs', () => {
+  it('remembers the scores before the latest Tally so the back peg can sit there', () => {
+    let session = untilPegging(startSession(7));
+    for (let i = 0; i < 40 && session.engine.round === 1; i++) {
+      const turn = viewFor(session.engine, 0).pegging?.turn;
+      if (turn === undefined) break;
+      if (turn === HUMAN) {
+        const card = viewFor(session.engine, HUMAN).pegging?.legal[0];
+        if (card === undefined) break;
+        session = humanAct(session, { type: 'play', seat: HUMAN, card });
+      } else {
+        session = computerAct(session, randomOpponent) ?? session;
+      }
+    }
+    const scored = session.events.filter((e) => e.type === 'scored');
+    const [first, second] = scored;
+    if (first === undefined || second === undefined) {
+      throw new Error('expected at least two scoring Events');
+    }
+    const upTo = session.events.indexOf(second) + 1;
+    const model = present({ ...session, revealed: upTo });
+    expect(model.scores).toEqual(second.scores);
+    expect(model.previousScores).toEqual(first.scores);
+  });
+
+  it('starts both scores and previous scores at zero', () => {
+    const model = present(revealAll(startSession(7)));
+    expect(model.previousScores).toEqual([0, 0]);
+  });
+});

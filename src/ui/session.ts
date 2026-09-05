@@ -177,6 +177,8 @@ export type TableModel = {
   readonly dealer: Seat | null;
   readonly cuts: PerSeat<Card> | null;
   readonly scores: PerSeat<number>;
+  /** The scores before the latest Tally: where the back pegs sit. */
+  readonly previousScores: PerSeat<number>;
   /** Cards each Seat still holds at this point of the presentation. */
   readonly hands: PerSeat<readonly Card[]>;
   /** The four cards each Seat kept for the Show, known once the Starter is cut. */
@@ -200,6 +202,7 @@ const EMPTY: TableModel = {
   dealer: null,
   cuts: null,
   scores: [0, 0],
+  previousScores: [0, 0],
   hands: [[], []],
   kept: [[], []],
   discarded: [false, false],
@@ -241,6 +244,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
         ...EMPTY,
         stage: 'discarding',
         scores: model.scores,
+        previousScores: model.previousScores,
         round: event.round,
         dealer: event.dealer,
         hands: event.hands,
@@ -294,7 +298,7 @@ function step(model: TableModel, event: GameEvent): TableModel {
         },
       };
     case 'scored':
-      return { ...model, scores: event.scores };
+      return { ...model, scores: event.scores, previousScores: model.scores };
     case 'round-ended':
       return model;
     case 'game-won':
