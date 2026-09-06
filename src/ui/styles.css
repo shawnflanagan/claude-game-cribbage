@@ -793,14 +793,57 @@ button.card.card-selected:focus-visible {
   height: auto;
 }
 
+/* The two Folds: one Turn on a wide screen, three on a phone; one shows. */
+.board .board-narrow {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .board .board-wide {
+    display: none;
+  }
+
+  .board .board-narrow {
+    display: block;
+  }
+}
+
+/* Each Track is painted on the wood in a soft wash of its Seat's colour. */
+.track-band {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-0 .track-band {
+  stroke: color-mix(in srgb, var(--accent) 32%, var(--wood));
+}
+
+.track-1 .track-band {
+  stroke: color-mix(in srgb, var(--computer-peg) 32%, var(--wood));
+}
+
 .hole {
   fill: var(--wood-dark);
 }
 
 .hole-game {
   fill: var(--wood-darker);
-  stroke: var(--accent);
+  stroke: var(--paper);
   stroke-width: 1;
+}
+
+.board-text {
+  fill: var(--paper);
+  opacity: 0.7;
+  font-size: 7px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-skunk {
+  opacity: 0.85;
 }
 
 .skunk-line {
@@ -809,23 +852,35 @@ button.card.card-selected:focus-visible {
   opacity: 0.7;
 }
 
-.peg circle {
-  stroke: var(--peg-edge);
-  stroke-width: 0.8;
+/* Pegs: a coloured head with a glint, standing in a shadow on the wood. */
+.peg-shadow {
+  fill: var(--peg-edge);
+  opacity: 0.6;
 }
 
-.track-0 .peg circle {
+.peg-head {
+  stroke: var(--peg-edge);
+  stroke-width: 0.6;
+}
+
+.track-0 .peg-head {
   fill: var(--accent);
 }
 
-.track-1 .peg circle {
+.track-1 .peg-head {
   fill: var(--computer-peg);
 }
 
-.peg-back circle {
-  opacity: 0.8;
+.peg-shine {
+  fill: var(--paper);
+  opacity: 0.85;
 }
 
+.peg-back {
+  opacity: 0.75;
+}
+
+/* Pegs slide to their new Hole (ADR 0004 keeps them out of view transitions). */
 .peg {
   transition: transform 300ms ease;
 }

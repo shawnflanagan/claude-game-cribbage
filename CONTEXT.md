@@ -159,6 +159,10 @@ _Avoid_: row, side, rail
 Where the Tracks curve round together to begin the next Leg.
 _Avoid_: bend, curve, U-turn, hairpin
 
+**Fold**:
+How many Legs the Board is drawn with for the screen it is on: two on a wide screen, four on a phone. The same Track either way.
+_Avoid_: variant, layout, breakpoint, version
+
 ### Across Games
 
 **Record**:

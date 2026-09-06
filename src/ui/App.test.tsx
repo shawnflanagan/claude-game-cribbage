@@ -141,9 +141,10 @@ describe('App with a saved Game', () => {
     const youScore = /You (\d+)/.exec(
       screen.getByLabelText('Scores').textContent,
     )?.[1];
+    // Both Folds of the Board are in the DOM; CSS shows one.
     expect(
-      screen.getByLabelText(`You, front peg at ${youScore ?? '?'}`),
-    ).toBeDefined();
+      screen.getAllByLabelText(`You, front peg at ${youScore ?? '?'}`),
+    ).toHaveLength(2);
     const countBefore = screen.getByText(/Count/).textContent;
     const scoresBefore = screen.getByLabelText('Scores').textContent;
     first.unmount();
