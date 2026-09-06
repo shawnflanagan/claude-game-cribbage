@@ -1,145 +1,178 @@
+import { otherSeat, type PerSeat, type Seat } from '../../engine';
 import {
-  DOUBLE_SKUNK_LINE,
-  SKUNK_LINE,
-  WINNING_SCORE,
-  otherSeat,
-  type PerSeat,
-  type Seat,
-} from '../../engine';
+  boardGeometry,
+  pegPosition,
+  type BoardGeometry,
+  type Point,
+  type SkunkLine,
+  type Track,
+} from '../board';
 
-// Layout, in SVG units. The 120 scoring holes before the game hole snake
-// through four rows of thirty so the board stays readable on a phone.
-const HOLES_PER_ROW = 30;
-const ROWS = (WINNING_SCORE - 1) / HOLES_PER_ROW;
-const HOLE_SPACING_X = 12;
-const ROW_SPACING_Y = 14;
-const TRACK_GAP = ROW_SPACING_Y;
 const HOLE_RADIUS = 2.6;
 const GAME_HOLE_RADIUS = 4;
 const PEG_RADIUS = 4;
 
-type Point = { readonly x: number; readonly y: number };
+// The two Folds: one Turn on a wide screen, three on a phone. CSS shows one.
+const WIDE = boardGeometry({ holesPerLeg: 60, numeralStep: 10 });
+const NARROW = boardGeometry({ holesPerLeg: 30, numeralStep: 30 });
 
-/** Where hole `hole` (0 to 121) sits on track `track` (0 above, 1 below). */
-function holePosition(track: number, hole: number): Point {
-  const top = track * (ROWS * ROW_SPACING_Y + TRACK_GAP);
-  if (hole === 0) return { x: 0, y: top };
-  if (hole >= WINNING_SCORE)
-    return { x: 0, y: top + (ROWS - 1) * ROW_SPACING_Y };
-  const index = hole - 1;
-  const row = Math.floor(index / HOLES_PER_ROW);
-  const col = index % HOLES_PER_ROW;
-  const along = row % 2 === 0 ? col : HOLES_PER_ROW - 1 - col;
-  return { x: HOLE_SPACING_X * (1 + along), y: top + row * ROW_SPACING_Y };
-}
-
-/** Hole positions never change, so they are computed once per track. */
-const POSITIONS: readonly (readonly Point[])[] = [0, 1].map((track) =>
-  Array.from({ length: WINNING_SCORE + 1 }, (_, hole) =>
-    holePosition(track, hole),
-  ),
-);
-
-function positionOf(track: number, hole: number): Point {
-  return POSITIONS[track]?.[Math.min(hole, WINNING_SCORE)] ?? { x: 0, y: 0 };
-}
-
-const translate = ({ x, y }: Point) => `translate(${String(x)} ${String(y)})`;
-
-function holeClass(hole: number): string {
-  if (hole === WINNING_SCORE) return 'hole hole-game';
-  if (hole === 0) return 'hole hole-start';
-  return 'hole';
-}
+const SKUNK_TEXT: Record<SkunkLine['kind'], { name: string; letter: string }> =
+  {
+    skunk: { name: 'Skunk line', letter: 'S' },
+    'double-skunk': { name: 'Double Skunk line', letter: 'SS' },
+  };
 
 type Props = {
   scores: PerSeat<number>;
-  /** The scores before the latest Tally, where the back pegs sit. */
+  /** The scores before the latest Tally, where the back Pegs sit. */
   previous: PerSeat<number>;
   human: Seat;
 };
 
 /**
- * The cribbage board: a 121-hole track per Seat with a front and back
- * peg, so the board shows the current score and the one before it.
+ * The Board: two Tracks side by side, out along the bottom Leg, round a
+ * Turn and back, with a front and back Peg per Seat so the Board shows the
+ * score and the one before it. The human's Track is the outer one.
  */
-export function Board({ scores, previous, human }: Props) {
-  const width = HOLE_SPACING_X * (HOLES_PER_ROW + 2);
-  const height = 2 * ROWS * ROW_SPACING_Y + TRACK_GAP;
-  const seats: readonly Seat[] = [human, otherSeat(human)];
+export function Board(props: Props) {
   return (
     <div className="board">
-      <svg
-        role="group"
-        aria-label="Cribbage board"
-        viewBox={`${String(-HOLE_SPACING_X / 2)} ${String(-ROW_SPACING_Y / 2)} ${String(width)} ${String(height)}`}
-      >
-        {seats.map((seat, track) => {
-          const name = seat === human ? 'You' : 'Computer';
-          return (
-            <g
-              key={seat}
-              data-track={track}
-              className={`track track-${String(track)}`}
-            >
-              {POSITIONS[track]?.map((point, hole) => (
-                <circle
-                  key={hole}
-                  className={holeClass(hole)}
-                  data-hole={hole}
-                  cx={point.x}
-                  cy={point.y}
-                  r={hole === WINNING_SCORE ? GAME_HOLE_RADIUS : HOLE_RADIUS}
-                />
-              ))}
-              <SkunkMark
-                track={track}
-                before={DOUBLE_SKUNK_LINE}
-                label="Double Skunk line"
-              />
-              <SkunkMark track={track} before={SKUNK_LINE} label="Skunk line" />
-              <g
-                className="peg peg-back"
-                role="img"
-                aria-label={`${name}, back peg at ${String(previous[seat])}`}
-                transform={translate(positionOf(track, previous[seat]))}
-              >
-                <circle r={PEG_RADIUS} />
-              </g>
-              <g
-                className="peg peg-front"
-                role="img"
-                aria-label={`${name}, front peg at ${String(scores[seat])}`}
-                transform={translate(positionOf(track, scores[seat]))}
-              >
-                <circle r={PEG_RADIUS} />
-              </g>
-            </g>
-          );
-        })}
-      </svg>
+      <Fold {...props} geometry={WIDE} name="wide" />
+      <Fold {...props} geometry={NARROW} name="narrow" />
     </div>
   );
 }
 
-type SkunkMarkProps = { track: number; before: number; label: string };
+type FoldProps = Props & { geometry: BoardGeometry; name: 'wide' | 'narrow' };
 
-/** A tick across the track just before hole `before`, where a Skunk line falls. */
-function SkunkMark({ track, before, label }: SkunkMarkProps) {
-  const a = positionOf(track, before - 1);
-  const b = positionOf(track, before);
-  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  const acrossRows = a.y !== b.y;
-  const half = acrossRows ? ROW_SPACING_Y * 0.45 : HOLE_SPACING_X * 0.6;
+function Fold({ scores, previous, human, geometry, name }: FoldProps) {
+  const { viewBox } = geometry;
+  const tracks: readonly { track: Track; seat: Seat }[] = [
+    { track: 0, seat: human },
+    { track: 1, seat: otherSeat(human) },
+  ];
   return (
-    <line
-      className="skunk-line"
+    <svg
+      className={`board-${name}`}
+      role="group"
+      aria-label="Cribbage board"
+      viewBox={`${String(viewBox.x)} ${String(viewBox.y)} ${String(viewBox.width)} ${String(viewBox.height)}`}
+    >
+      {tracks.map(({ track, seat }) => {
+        const who = seat === human ? 'You' : 'Computer';
+        return (
+          <g
+            key={track}
+            data-track={track}
+            className={`track track-${String(track)}`}
+          >
+            <path className="track-band" d={geometry.band[track]} />
+            {geometry.startHoles[track].map((point, i) => (
+              <Hole key={`start-${String(i)}`} at={point} kind="start" />
+            ))}
+            {geometry.holes[track].map((point, i) => (
+              <Hole key={i} at={point} hole={i + 1} />
+            ))}
+            <Hole at={geometry.gameHole[track]} kind="game" />
+            <Peg
+              kind="back"
+              label={`${who}, back peg at ${String(previous[seat])}`}
+              at={pegPosition(geometry, track, previous[seat], 'back')}
+            />
+            <Peg
+              kind="front"
+              label={`${who}, front peg at ${String(scores[seat])}`}
+              at={pegPosition(geometry, track, scores[seat], 'front')}
+            />
+          </g>
+        );
+      })}
+      {geometry.numerals.map((n) => (
+        <Label key={n.hole} at={n.at}>
+          {n.hole}
+        </Label>
+      ))}
+      <Label
+        at={{
+          x: geometry.gameHole[0].x - GAME_HOLE_RADIUS - 3,
+          y: (geometry.gameHole[0].y + geometry.gameHole[1].y) / 2,
+        }}
+        anchor="end"
+      >
+        121
+      </Label>
+      {geometry.skunkLines.map((line) => (
+        <g key={line.kind}>
+          <line
+            className="skunk-line"
+            role="img"
+            aria-label={SKUNK_TEXT[line.kind].name}
+            x1={line.tick.from.x}
+            y1={line.tick.from.y}
+            x2={line.tick.to.x}
+            y2={line.tick.to.y}
+          />
+          <Label at={line.letter} className="board-skunk">
+            {SKUNK_TEXT[line.kind].letter}
+          </Label>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+type HoleProps = { at: Point; hole?: number; kind?: 'start' | 'game' };
+
+function Hole({ at, hole, kind }: HoleProps) {
+  return (
+    <circle
+      className={kind === undefined ? 'hole' : `hole hole-${kind}`}
+      data-hole={hole}
+      cx={at.x}
+      cy={at.y}
+      r={kind === 'game' ? GAME_HOLE_RADIUS : HOLE_RADIUS}
+    />
+  );
+}
+
+type LabelProps = {
+  at: Point;
+  anchor?: 'middle' | 'end';
+  className?: string;
+  children: React.ReactNode;
+};
+
+/** Text printed on the wood: numerals, the Skunk letters, 121. */
+function Label({ at, anchor = 'middle', className, children }: LabelProps) {
+  return (
+    <text
+      className={
+        className === undefined ? 'board-text' : `board-text ${className}`
+      }
+      x={at.x}
+      y={at.y}
+      textAnchor={anchor}
+      dominantBaseline="middle"
+    >
+      {children}
+    </text>
+  );
+}
+
+type PegProps = { kind: 'front' | 'back'; label: string; at: Point };
+
+/** A pin: its shadow on the wood, a coloured head, and a glint of light. */
+function Peg({ kind, label, at }: PegProps) {
+  return (
+    <g
+      className={`peg peg-${kind}`}
       role="img"
       aria-label={label}
-      x1={acrossRows ? mid.x : mid.x - half}
-      x2={acrossRows ? mid.x : mid.x + half}
-      y1={acrossRows ? mid.y - half : mid.y}
-      y2={acrossRows ? mid.y + half : mid.y}
-    />
+      transform={`translate(${String(at.x)} ${String(at.y)})`}
+    >
+      <ellipse className="peg-shadow" cx={0.8} cy={1.4} rx={4.4} ry={2.6} />
+      <circle className="peg-head" r={PEG_RADIUS} />
+      <circle className="peg-shine" cx={-1.3} cy={-1.4} r={1.2} />
+    </g>
   );
 }
